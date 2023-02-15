@@ -1,0 +1,10 @@
+reset
+set autoscale
+set logscale cb
+set logscale x
+set xlabel "t/yr"
+set ylabel "h/km"
+
+set pm3d map
+
+splot "fort.33" u ($1/3e7):2:3

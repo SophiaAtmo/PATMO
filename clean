@@ -1,0 +1,93 @@
+#!/usr/bin/python
+#!python
+import glob,shutil,os
+os.chdir(".")
+
+hasrm = False
+
+#remove using a list of dictionaries
+# every list item is a dictionary with
+# path: folder path
+# fileType: extention to consider, e.g. ".html"
+def remover(paths):
+	hasrm = False
+	for pp in paths:
+		#clear htmlRate folder (files)
+		for root, dirs, files in os.walk(pp["path"]):
+			path = root
+			#add slash ad the end of path if needed
+			if(path[len(path)-1]!="/"): path += "/"
+			for x in files:
+				if(not(x.endswith(pp["fileType"]))): continue
+				print "removing ./"+path+x
+				os.remove(path+x)
+				hasrm = True
+	return hasrm
+
+
+#remove temp files (~) from subfolders
+for root, dirnames, filenames in os.walk('.'):
+	for fle in filenames:
+		remove = False
+		for ty in [".pyc"]:
+			if(ty==fle[-len(ty):]):
+				remove = True
+				break
+		if(fle[len(fle)-1]=="~" or remove):
+			fname = root+"/"+fle 
+			os.unlink(fname)
+			print "removing ./"+fname
+			hasrm = True
+
+hasrm = remover([{"path":"./reports/xsecs", "fileType":".dat"},\
+	{"path":"./htmlDocs/rateReversePNGs", "fileType":".png"},\
+	{"path":"./htmlDocs/thermochemistryPNGs", "fileType":".png"},\
+	{"path":"./htmlDocs", "fileType":".html"},\
+	{"path":"./htmlDocs/ratePNGs", "fileType":".png"},])
+#	{"path":"./htmlDocs/htmlSpecies/pngs/", "fileType":".png"},\
+#	{"path":"./htmlDocs/htmlRates/pngs/", "fileType":".png"},\
+#	{"path":"./htmlDocs/htmlTopology", "fileType":".html"},\
+#	{"path":"./htmlDocs/htmlTopology/pngs/", "fileType":".png"},\
+#	{"path":"./htmlDocs/htmlDust", "fileType":".html"},\
+#	{"path":"./htmlDocs/htmlDust/pngs/", "fileType":".png"},\
+#	{"path":"./reports/", "fileType":".log"},\
+#	{"path":"./graph/", "fileType":".dot"},\
+#	{"path":"./graph/", "fileType":".eps"},\
+#	{"path":"./dust/tmp/", "fileType":".tmp"},\
+#	{"path":"./options/", "fileType":".opt"}])
+
+
+
+#clear build (files)
+for root, dirs, files in os.walk("./build/"):
+	path = root
+	#add slash ad the end of path if needed
+	if(path[len(path)-1]!="/"): path += "/"
+	for x in files:
+		print "removing ./"+path+x
+		os.remove(path+x)
+		hasrm = True
+
+#clear build (dirs)
+for root, dirs, files in os.walk("./build/"):
+	path = root
+	#add slash ad the end of path if needed
+	if(path[len(path)-1]!="/"): path += "/"
+	for x in dirs:
+		print "removing ./"+path+x
+		shutil.rmtree(path+x)
+	hasrm = True
+
+#add README file in build if not present
+fname = "build/README"
+if(not(os.path.isfile(fname))):
+	print "adding README in ./build"
+	fout = open(fname,"w")
+	fout.write("this folder will contain the built files\n")
+	fout.close()
+
+
+
+
+if(not(hasrm)): print "nothing to clean"
+print "done!"

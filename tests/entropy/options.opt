@@ -1,0 +1,6 @@
+cellsNumber 	= 64
+photoBinsNumber = 100
+network 	= tests/entropy/kast80.ntw
+energyMin 	= 1.
+energyMax	= 12.6
+useReverse	= F

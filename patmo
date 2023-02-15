@@ -1,0 +1,120 @@
+#!/usr/bin/python
+# !python
+
+import sys
+
+# move to the python source folder
+sys.path.insert(0, "./src_py/")
+import patmo_network
+import patmo_string
+import patmo_utils
+import patmo_commons
+import patmo_rates
+import patmo_photoRates
+import patmo_test
+import patmo_options
+import patmo_photochemistry
+import patmo_sparsity
+import patmo_jacobian
+import patmo_reverseRates
+import patmo_main
+
+# look for -test option in argv
+testName = None
+for arg in sys.argv:
+    if "-test=" in arg:
+        testName = arg.replace("-test=", "").strip()
+
+# if missing test rise error
+if testName is None:
+    print "ERROR: call should be"
+    print " ./" + sys.argv[0] + " -test=[name]"
+    sys.exit()
+
+# run hello test
+patmo_test.buildTest(testName)
+
+# create options object and set options
+myOptions = patmo_options.options("tests/" + testName + "/options.opt")
+
+# create a network object
+myNetwork = patmo_network.network(myOptions)
+# load network from file
+myNetwork.loadNetwork()
+
+# create photochemistry object
+myPhotochemistry = patmo_photochemistry.photochemistry(myNetwork, myOptions)
+myPhotochemistry.createLogMetric()
+
+# build utility F90 file
+patmo_utils.buildUtils(myNetwork)
+
+# build rates F90 file
+patmo_rates.buildRates(myNetwork)
+
+# build photorates F90 file
+patmo_photoRates.buildPhotoRates(myNetwork)
+# build photorates loader
+myPhotochemistry.buildLoadPhotoRates()
+
+# create reverse reactions
+if myOptions.useReverse:
+    myNetwork.doReverse()
+
+# check mass, charge, sources, and sinks for all reactions
+myNetwork.checkAll()
+
+# build reverse reactions F90 file
+patmo_reverseRates.buildReverseRates(myNetwork)
+
+# write ODE, including photochemistry
+myNetwork.buildODE()
+
+# build commons F90 file
+patmo_commons.buildCommons(myNetwork, myOptions)
+
+# prepare and build sparsity
+patmo_sparsity.buildSparsity(myNetwork)
+
+# prepare and build Jacobian
+patmo_jacobian.buildJacobian(myNetwork)
+
+# prepare main F90 file
+patmo_main.buildMain(myNetwork, myOptions)
+
+# list of file copied from src_f90 folder
+copyList = ["Makefile",
+            "patmo_constants.f90",
+            "patmo_thermo.f90",
+            "patmo_parameters.f90"]
+
+# list of file copied from solvers folder
+copyListSolver = ["opkda1.f",
+                  "opkda2.f",
+                  "opkdmain.f"]
+
+# copy files
+patmo_utils.copyListTo("src_f90/", "build/", copyList)
+patmo_utils.copyListTo("solvers/", "build/", copyListSolver)
+
+# list of files to be indented
+allFiles = ["build/patmo_ode.f90",
+            "build/patmo_utils.f90",
+            "build/patmo_rates.f90",
+            "build/patmo_photoRates.f90",
+            "build/patmo_reverseRates.f90",
+            "build/patmo_photo.f90",
+            "build/patmo_thermo.f90",
+            "build/patmo_jacobian.f90",
+            "build/patmo_sparsity.f90",
+            "build/patmo_commons.f90"]
+
+# indent all files
+patmo_string.indentFileList(allFiles)
+
+# plot rates coefficient
+if myOptions.plotRates:
+    print ">> build done, you can start to work there! <<"
+    myNetwork.makeHtmlDocs(myOptions)
+
+print "DONE, BYE!"
