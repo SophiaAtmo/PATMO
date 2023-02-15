@@ -1,0 +1,62 @@
+{\rtf1\ansi\ansicpg1252\cocoartf1265\cocoasubrtf210
+\cocoascreenfonts1{\fonttbl\f0\fswiss\fcharset0 Helvetica;}
+{\colortbl;\red255\green255\blue255;}
+\paperw11900\paperh16840\margl1440\margr1440\vieww22680\viewh22160\viewkind0
+\pard\tx566\tx1133\tx1700\tx2267\tx2834\tx3401\tx3968\tx4535\tx5102\tx5669\tx6236\tx6803\pardirnatural
+
+\f0\fs28 \cf0 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! \
+V. Wakelam      Janv. 2015\
+\
+kida.uva.2014\
+Gas-Phase Chemical network for interstellar chemistry in the tradition of the OSU database.\
+See Wakelam et al. (2015, Astrophysical Journal and Supplement Series)\
+for details\
+\
+This network contains 6992 unique chemical reactions and in total 7506 rate coefficients. These reactions involve 489 different species. \
+All the references used to construct this network are provided in an additional file in the bibtex format.\
+\
+!!!!!!!!!!!!!!!!!!  FORMAT OF KIDA.UVA NETWORK !!!!!!!!!!!!!!!!!!!!!!!!!!!!\
+\
+The format of the kida.uva file is the following (as for kida networks downloaded from kida):\
+\
+Format : 3(a10 1x) 1x 5(a10 1x) 1x 3(e10.3 1x) i5 1x i5 1x a4 1x i2 1x i6 1x i6 1x i2 1x i5 1x i2 1x i1\
+Reactants   Products  alpha  beta  gamma  F g Type_of_uncertainty   itype    Trange   Formula    Number     Number_of_(alpha, beta, gamma)      Recommendation\
+\
+alpha, beta, gamma are the parameters to compute the rate coefficients. The formula depends on the type of reaction. See http:// kida.obs.u-bordeaux1.fr/help\
+\
+F is the uncertainty factor on the rate coefficient (See http://kida.obs.u-bordeaux1.fr/help)\
+\
+g is the temperature dependence of this uncertainty factor (See http://kida.obs.u-bordeaux1.fr/help)\
+\
+Type of uncertainty : lognormal (logn) , normal (norm) , loguniform (logu) , uniform (unif)\
+\
+Itype is the type of reaction :\
+See http:// kida.obs.u-bordeaux1.fr/help\
+\
+Trange is the range of temperatures the rate coefficient is valid. We do not recommend to make extrapolations outside this range. \
+When we do not have information on Trange, default values are used: -9999,9999.\
+\
+Formula is a number that referes to the formula needed to compute the rate coefficient of the reaction. \
+1: Cosmic-ray ionization (direct and undirect)\
+2: Photo-dissociation (Draine)\
+3: Kooij \
+4: ionpol1 \
+5: ionpol2 \
+6: Troe fall-off\
+Correspondances of the names to the mathematical expression can be found at this address: http://kida.obs.u-bordeaux1.fr/help\
+Note that for photorates, the type of the UV field is contained in the name fo the formula. For example, Draine means standard interstellar radiation field cf Draine (1978, ApJS, 36,595 ). \
+\
+Number is the number of the reaction in the downloaded network.\
+\
+Number of (alpha, beta, gamma) is the number of (alpha, beta, gamma) in the downloaded network when several values are present in KIDA. \
+When a user selects a range of temperature and that several rate coefficients in KIDA can be in agreement with his search, all data will be included in the network. \
+We then expect the user to choose one of the values. If the reactions are particularly important, we advise the user to contact KIDA to get advises. \
+These reactions that are present more than once in the network are listed below.\
+\
+Recommendation is the recommendation given by experts in KIDA. \
+0 means that the value is not recommended. \
+1 means that there is no recommendation (experts have not looked at the data). \
+2 means that the value has been validated by experts over the Trange\
+3 means that it is the recommended value over Trange.\
+\
+}
