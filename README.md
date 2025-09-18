@@ -7,7 +7,7 @@ It is partially based on [KROME](http://www.kromepackage.org/), as it produces o
 
 ### Getting Started 
 
-Check the [Wiki](https://bitbucket.org/tgrassi/planatmo/wiki/Home) (always under construction)
+Check the [Wiki](https://sites.google.com/sophia-atmochem-lab.org/patmo-user-guide) (always under construction)
 
 ### Credits  
 PATMO is developed and mantained by [Tommaso Grassi](http://starplan.dk/users/tommaso)  
