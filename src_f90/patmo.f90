@@ -9,10 +9,10 @@ contains
     use patmo_utils
 
 #IFPATMO_usePhotochemistry
-    !load photo cross-sections
-    call loadAllPhotoXsecs()
     !load photo metrics (i.e. binning)
     call loadPhotoMetric("xsecs/photoMetric.dat")
+    !load photo cross-sections
+    call loadAllPhotoXsecs()
 
     !init default photoflux
     photoFlux(:) = 0d0
@@ -43,7 +43,6 @@ contains
     use patmo_photoRates
     use patmo_reverseRates
     use patmo_utils
-    use patmo_thermo
     implicit none
     real*8,intent(in)::dt
     real*8::atol(neqAll),rtol(neqAll)
@@ -116,30 +115,41 @@ contains
     n((positionTgas-1)*cellsNumber+1:(positionTgas*cellsNumber)) &
          = TgasAll(:)
 
-    ! compute temperature
-    ! TODO: implement function in patmo_thermo.f90
-    !       now it is a dummy
-    call computeTgas(tauAll(:,:))
-
     !compute rates
     call computeRates(TgasAll(:))
     call computePhotoRates(tauAll(:,:))
     call computeReverseRates(TgasAll(:))
-
+#IFPATMO_useHescape 
+    call computeHescape() 
+#ENDIFPATMO
     !compute tot density
-    ntotAll(:) = sum(nall(:,1:chemSpeciesNumber),2)
+    !ntotAll(:) = sum(nall(:,1:chemSpeciesNumber),2) !Trieu commented
+    ntotAll(:) = 0.0d0
+    do j = 1, chemSpeciesNumber
+      if (j /= patmo_idx_M) then
+       ntotAll(:) = ntotAll(:) + nAll(:, j)
+      end if
+    end do                                           !Trieu commented
 
     !compute mean molecular mass of the whole atmosphere
     ! (averaged between layers)
     m(:) = getSpeciesMass()
     meanMolecularMass = 0d0
     do i=1,cellsNumber
-       meanMolecularMass = meanMolecularMass &
-            + sum(m(1:chemSpeciesNumber) &
-            * nAll(i,1:chemSpeciesNumber)) &
-            / ntotAll(i) / cellsNumber
+    !   meanMolecularMass = meanMolecularMass &       !Trieu commented
+    !        + sum(m(1:chemSpeciesNumber) &
+    !        * nAll(i,1:chemSpeciesNumber)) &
+    !        / ntotAll(i) / cellsNumber
+       do j = 1, chemSpeciesNumber
+         if (j /= patmo_idx_M) then
+           meanMolecularMass = meanMolecularMass + m(j) * nAll(i,j) / ntotAll(i)
+         end if
+       end do                                         
     end do
 
+    ! Average across all cells
+    meanMolecularMass = meanMolecularMass / cellsNumber  !Trieu commented
+    
     !call the solver (DVODE_f90)
     !CALL DVODE_F90(fex, &
     !     neqAll, n(:), &
@@ -152,6 +162,7 @@ contains
     do
        CALL DLSODES(fex, NEQ(:), n(:), tstart, dt, ITOL, RTOL, ATOL,&
             ITASK, ISTATE, IOPT, RWORK, LRW, IWORK, LIW, JES, MF)
+       print *, istate
        !recompute sparsity if required
        if(istate==-5.or.istate==-4) then
           istate = 3
@@ -280,6 +291,11 @@ contains
 
     !scale geometric flux
     photoFlux(:) =  pi*rstar**2/dstar**2 * photoFlux(:)
+    open(58,file="solar_flux.txt",status="old")
+    do i=1,photoBinsNumber
+        read(58,*) photoFlux(i)
+    end do
+    close(58)
 
   end subroutine patmo_setFluxBB
 
@@ -326,6 +342,8 @@ contains
        stop
     end if
     close(22)
+
+    print *, "Opacity dumped in ", trim(fname)
 
   end subroutine patmo_dumpOpacity
 
@@ -575,7 +593,7 @@ contains
 
   !***************
   !set uniform grid spacing, cm
-  subroutine patmo_setGridSpacing(dz)
+ subroutine patmo_setGridSpacing(dz)
     use patmo_commons
     use patmo_parameters
     implicit none
@@ -592,22 +610,22 @@ contains
        zold = zold + gridSpace(j)
     end do
 
-  end subroutine patmo_setGridSpacing
+ end subroutine patmo_setGridSpacing
 
   !***************
   !set thermal diffusion
-  subroutine patmo_setThermalDiffusion(alpha)
+ subroutine patmo_setThermalDiffusion(alpha)
     use patmo_parameters
     implicit none
     real*8,intent(in)::alpha
 
     thermalDiffusionFactor = alpha
 
-  end subroutine patmo_setThermalDiffusion
+ end subroutine patmo_setThermalDiffusion
 
   !***************
   !set eddy Kzz coefficient of icell layer
-  subroutine patmo_setEddyKzz(icell,kzz)
+ subroutine patmo_setEddyKzz(icell,kzz)
     use patmo_parameters
     implicit none
     real*8,intent(in)::kzz
@@ -615,22 +633,22 @@ contains
 
     eddyKzz(icell) = kzz
 
-  end subroutine patmo_setEddyKzz
+ end subroutine patmo_setEddyKzz
 
   !***************
   !set eddy Kzz, same for all layers
-  subroutine patmo_setEddyKzzAll(kzz)
+ subroutine patmo_setEddyKzzAll(kzz)
     use patmo_parameters
     implicit none
     real*8,intent(in)::kzz
 
     eddyKzz(:) = kzz
 
-  end subroutine patmo_setEddyKzzAll
+ end subroutine patmo_setEddyKzzAll
 
   !***************
   !set diffusion Dzz for layer icell
-  subroutine patmo_setDiffusionDzz(icell,dzz)
+ subroutine patmo_setDiffusionDzz(icell,dzz)
     use patmo_parameters
     implicit none
     real*8,intent(in)::dzz
@@ -638,22 +656,22 @@ contains
 
     diffusionDzz(icell) = dzz
 
-  end subroutine patmo_setDiffusionDzz
+ end subroutine patmo_setDiffusionDzz
 
   !***************
   !set diffusion Dzz, same for all layers
-  subroutine patmo_setDiffusionDzzAll(dzz)
+ subroutine patmo_setDiffusionDzzAll(dzz)
     use patmo_parameters
     implicit none
     real*8,intent(in)::dzz
 
     diffusionDzz(:) = dzz
 
-  end subroutine patmo_setDiffusionDzzAll
+ end subroutine patmo_setDiffusionDzzAll
 
   !***************
   !append density of species idx to file number ifile
-  subroutine patmo_dumpDensityToFile(ifile,time,idx)
+ subroutine patmo_dumpDensityToFile(ifile,time,idx)
     use patmo_commons
     use patmo_parameters
     implicit none
@@ -666,20 +684,20 @@ contains
     end do
     write(ifile,*)
 
-  end subroutine patmo_dumpDensityToFile
+ end subroutine patmo_dumpDensityToFile
 
   !****************
   !dump all mixing rations to file (one column one species)
   ! first column is layer number
-  subroutine patmo_dumpAllMixingRatioToFile(fname)
+ subroutine patmo_dumpAllMixingRatioToFile(fname)
     use patmo_commons
     use patmo_parameters
     use patmo_utils
     implicit none
     character(len=*),intent(in)::fname
-    character(len=5000)::header
+    character(len=500)::header
     character(len=maxNameLength)::names(speciesNumber)
-    integer::i, unit
+    integer::i
 
     names(:) = getSpeciesNames()
     !prepare header (species names)
@@ -689,20 +707,20 @@ contains
     end do
 
     !open file to dump mixing ratios
-    open(newunit=unit, file=trim(fname), status="replace")
+    open(67,file=trim(fname),status="replace")
     !write file header (species names)
-    write(unit, '(a)') trim(header)
+    write(67,*) trim(header)
     !write mixing ratios
     do i=1,cellsNumber
-       write(unit, '(I5,999E17.8e3)') i, nall(i, 1:chemSpeciesNumber)
+       write(67,'(I5,999E17.8e3)') i,nall(i,1:chemSpeciesNumber)
     end do
-    close(unit)
+    close(67)
 
-  end subroutine patmo_dumpAllMixingRatioToFile
+ end subroutine patmo_dumpAllMixingRatioToFile
 
   !***************
   !append mixing ration of species idx to file number ifile
-  subroutine patmo_dumpMixingRatioToFile(ifile,time,idx)
+ subroutine patmo_dumpMixingRatioToFile(ifile,time,idx)
     use patmo_commons
     use patmo_parameters
     implicit none
@@ -716,22 +734,22 @@ contains
     end do
     write(ifile,*)
 
-  end subroutine patmo_dumpMixingRatioToFile
+ end subroutine patmo_dumpMixingRatioToFile
 
   !****************
   !set gravity in cm/s2
-  subroutine patmo_setGravity(g)
+ subroutine patmo_setGravity(g)
     use patmo_parameters
     implicit none
     real*8,intent(in)::g
 
     gravity = g
 
-  end subroutine patmo_setGravity
+ end subroutine patmo_setGravity
 
   !****************
   !set chemistry of layer icell
-  subroutine patmo_setChemistry(icell,n)
+ subroutine patmo_setChemistry(icell,n)
     use patmo_commons
     use patmo_parameters
     implicit none
@@ -740,11 +758,11 @@ contains
 
     nall(icell,:) = n(:)
 
-  end subroutine patmo_setChemistry
+ end subroutine patmo_setChemistry
 
   !****************
   !set the same chemistry for all the layers
-  subroutine patmo_setChemistryAll(n)
+ subroutine patmo_setChemistryAll(n)
     use patmo_commons
     use patmo_parameters
     implicit none
@@ -755,11 +773,11 @@ contains
        nall(icell,:) = n(:)
     end do
 
-  end subroutine patmo_setChemistryAll
+ end subroutine patmo_setChemistryAll
 
   !**************
   !set Tgas for layer icell
-  subroutine patmo_setTgas(icell,Tgas)
+ subroutine patmo_setTgas(icell,Tgas)
     use patmo_commons
     use patmo_parameters
     implicit none
@@ -768,11 +786,11 @@ contains
 
     TgasAll(icell) = Tgas
 
-  end subroutine patmo_setTgas
+ end subroutine patmo_setTgas
 
   !**************
   !set the same Tgas for all layers
-  subroutine patmo_setTgasAll(Tgas)
+ subroutine patmo_setTgasAll(Tgas)
     use patmo_commons
     use patmo_parameters
     implicit none
@@ -780,11 +798,11 @@ contains
 
     TgasAll(:) = Tgas
 
-  end subroutine patmo_setTgasAll
+ end subroutine patmo_setTgasAll
 
   !**************
   !get density of species idx_species at layer icell
-  function patmo_getDensity(icell,idx_species)
+ function patmo_getDensity(icell,idx_species)
     use patmo_commons
     use patmo_parameters
     implicit none
@@ -793,11 +811,11 @@ contains
 
     patmo_getDensity = nall(icell,idx_species)
 
-  end function patmo_getDensity
+ end function patmo_getDensity
 
   !**************
   !get Tgas of layer icell
-  function patmo_getTgas(icell)
+ function patmo_getTgas(icell)
     use patmo_commons
     use patmo_parameters
     implicit none
@@ -806,6 +824,107 @@ contains
 
     patmo_getTgas = TgasAll(icell)
 
-  end function patmo_getTgas
+ end function patmo_getTgas
+
+  !**************
+  !dump J-Values
+ subroutine patmo_dumpJValue(fname)
+    use patmo_commons
+    use patmo_constants
+    use patmo_parameters
+    implicit none
+    character(len=*),intent(in)::fname
+    integer::i
+
+    open(22,file=trim(fname),status="replace")
+    write(22,*) "altitude/km#PATMO_JValueReactions"
+    !loop on cells
+    do i=1,cellsNumber
+        #PATMO_JValues
+    end do
+    write(22,*)
+    close(22)
+
+ end subroutine patmo_dumpJValue
+
+  !**************
+  !dump all reaction rates
+ subroutine patmo_dumpAllRates(fname)
+    use patmo_commons
+    use patmo_constants
+    use patmo_parameters
+    use patmo_rates  !Trieu added
+    implicit none
+    character(len=*),intent(in)::fname
+    integer::i
+    real*8::n(cellsNumber,speciesNumber)  !Trieu added
+
+    call computeTotalDensityExcludingM(n) !Trieu added
+    nall(:,patmo_idx_M) = n(:, patmo_idx_M)  !Trieu added
+    
+    open(22,file=trim(fname),status="replace")
+    write(22,*) "altitude/km#PATMO_DumpReactions"
+    !loop on cells
+    do i=1,cellsNumber
+        #PATMO_DumpAllReactionRates
+    end do
+    write(22,*)
+    close(22)
+
+ end subroutine patmo_dumpAllRates
+
+ subroutine patmo_dumpAllNumberDensityDifference(ifile,nb,na)
+  use patmo_commons
+  use patmo_parameters
+  implicit none
+  integer,intent(in)::ifile
+  real*8,intent(in)::nb(neqAll), na(cellsNumber, speciesNumber)
+  real*8::deltaNAll(cellsNumber, speciesNumber)
+  integer::i,j
+
+  !compute deference
+  do i = 1, speciesNumber
+      deltaNAll(:, i) = nb((i - 1) * cellsNumber + 1 : (i * cellsNumber)) - na(:, i)
+  end do
+
+  ! do j = 1, cellsNumber
+  !     do i = 1, speciesNumber
+  !         write(ifile, *) j, i, deltaNAll(j, i)
+  !     end do
+  ! end do
+  do i = 1, speciesNumber
+      write (ifile, *) i, deltaNAll(:, i)
+  end do
+  write(ifile,*)
+
+ end subroutine patmo_dumpAllNumberDensityDifference
+
+#IFPATMO_useHescape_dump
+ subroutine computeHescape()
+   use patmo_constants
+   use patmo_parameters
+   implicit none
+    
+   Hesc = 2.5d8 * &
+            (nAll(cellsNumber, patmo_idx_H) &
+            + 2d0 * nAll(cellsNumber, patmo_idx_H2) &
+            + 2d0 * nAll(cellsNumber, patmo_idx_H2O) &
+            + 4d0 * nAll(cellsNumber, patmo_idx_CH4)) &
+            / sum(nAll(cellsNumber,1:chemSpeciesNumber))
+   H2esc = 2.5d8 * &
+            (nAll(cellsNumber, patmo_idx_H2) &
+            + nAll(cellsNumber, patmo_idx_H2O)&
+            + 2d0 * nAll(cellsNumber, patmo_idx_CH4))&
+            / sum(nAll(cellsNumber,1:chemSpeciesNumber))
+ end subroutine computeHescape
+
+ subroutine patmo_dumpHescape(ifile, time)
+   use patmo_parameters
+   implicit none
+   integer,intent(in)::ifile
+   real*8, intent(in)::time
+   write (ifile, *) time, Hesc, H2esc
+ end subroutine patmo_dumpHescape
+#ENDIFPATMO
 
 end module patmo

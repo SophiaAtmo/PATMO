@@ -21,6 +21,12 @@ module patmo_parameters
   real*8::energyRight(photoBinsNumber)
   real*8::tauAll(photoBinsNumber,cellsNumber)
   real*8::cumulativeFlux(cellsNumber,reactionsNumber)
+  real*8::wetdep(cellsNumber,chemSpeciesNumber)
+  real*8::drydep(cellsNumber,chemSpeciesNumber)
+  real*8::va(cellsNumber), pa(cellsNumber), gd(cellsNumber)
+  real*8::condenseH2O(cellsNumber)
+  real*8::Hesc, H2esc
+  real*8::O2Flux, CH4Flux, S8SurFall, SO4SurFall
   integer::iaSparsity(neqAll+1)
   integer,allocatable::jaSparsity(:)
   integer::nonZeroElements

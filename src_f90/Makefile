@@ -1,39 +1,41 @@
 #default fortran compiler
-fc = ifort
+gnu_fc = gfortran -ffree-line-length-none
+fc_legacy = gfortran -std=legacy -fallow-argument-mismatch -Ofast -ffree-line-length-none
 
 #executable name
 exec = test
 
 #flags
-switchOPT = -O3 -ipo -ip -unroll -xHost -fp-model precise
+switchOPT = -O3 -flto -funroll-loops
+#switchOPT = -O3 -ipo -ip -unroll
 switchDBG = -O0 -check all -warn all -fpe0 -u -traceback -warn nounused -g
 switchPRO = $(switchOPT) -pg -traceback -g
 switchOMP = $(switchOPT) -openmp
 
 switch = $(switchOPT)
 
-#objects
-objs = opkda1.o
-objs += opkda2.o
-objs += opkdmain.o
-objs += patmo_commons.o
-objs += patmo_constants.o
-objs += patmo_parameters.o
-objs += patmo_utils.o
-objs += patmo_thermo.o
-objs += patmo_rates.o
-objs += patmo_reverseRates.o
-objs += patmo_photo.o
-objs += patmo_photoRates.o
-objs += patmo_sparsity.o
-objs += patmo_jacobian.o
-objs += patmo_ode.o
-objs += patmo.o
-objs += test.o
 
-#default target
-all: 	$(objs)
-	$(fc) $(objs) -o $(exec) $(switch)
+#objects that need fortran, mind the sequence
+gnu_objs = opkda1.o opkda2.o opkdmain.o patmo_commons.o patmo_constants.o \
+       patmo_parameters.o patmo_utils.o patmo_rates.o patmo_reverseRates.o \
+       patmo_photo.o patmo_photoRates.o patmo_sparsity.o patmo_jacobian.o \
+    	patmo_ode.o patmo.o test.o\
+	   #patmo_write.o\
+	   
+
+# default target
+all: $(gnu_objs)
+	$(gnu_fc) $(switch) $(gnu_objs) -o $(exec)
+
+# Rules for Fortran 77 files with legacy support
+opkda1.o: opkda1.f
+	$(fc_legacy) -c opkda1.f -o opkda1.o
+
+opkda2.o: opkda2.f
+	$(fc_legacy) -c opkda2.f -o opkda2.o
+
+opkdmain.o: opkdmain.f
+	$(fc_legacy) -c opkdmain.f -o opkdmain.o
 
 debug: switch = $(switchDBG)
 debug: nowarn = -nowarn
@@ -66,10 +68,10 @@ coverage: all
 clean:
 	rm -f *.o *.mod *__genmod.f90 *~ $(exec)
 
-#rule for f90
-%.o:%.f90
-	$(fc) $(switch) -c $^ -o $@
-
 #rule for f
-%.o:%.f
-	$(fc) $(switch) -c $^ -o $@ $(nowarn)
+%.o: %.f90
+	$(gnu_fc) $(switch) -c $< -o $@
+
+# Compile Fortran 77 files (legacy support)
+%.o: %.f
+	$(fc_legacy) -c $< -o $@

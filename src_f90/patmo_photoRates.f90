@@ -20,14 +20,25 @@ contains
     implicit none
     integer,intent(in)::index
     real*8,intent(in)::tau(photoBinsNumber,cellsNumber)
-    real*8::integrateXsec(cellsNumber)
+    real*8::integrateXsec(cellsNumber), dE, mu
     integer::j
 
+    ! !loop on cells (stride photobins)
+    ! do j=1,cellsNumber
+    !    integrateXsec(j) = sum(xsecAll(:,index)*photoFlux(:) &
+    !         /energyMid(:)*energySpan(:)*exp(-tau(:,j))) / planck_eV
+    ! end do
+
+    !dE = (wavelengMax-wavelengMin)/photoBinsNumber (nm)
+    #PATMO_resolution
+    !mu =cosine(zenith_angle)
+    #PATMO_zenith_angle 
+    
     !loop on cells (stride photobins)
     do j=1,cellsNumber
-       integrateXsec(j) = sum(xsecAll(:,index)*photoFlux(:) &
-            /energyMid(:)*energySpan(:)*exp(-tau(:,j))) / planck_eV
+          integrateXsec(j) = sum(xsecAll(:,index)*photoFlux(:)*exp(-tau(:,j)/mu)*dE)
     end do
+
 
   end function integrateXsec
 

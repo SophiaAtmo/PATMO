@@ -21,8 +21,8 @@ contains
 
     !extrapolate lower and upper limits
     do i=1,cellsNumber
-       Tgas(i) = min(inTgas(i),#PATMO_Tmin)
-       Tgas(i) = max(Tgas(i),#PATMO_Tmax)
+       Tgas(i) = max(inTgas(i),#PATMO_Tmin)
+       Tgas(i) = min(Tgas(i),#PATMO_Tmax)
     end do
 
     lnTgas(:) = log(Tgas(:))
@@ -32,6 +32,9 @@ contains
     invTgas(:) = 1d0/Tgas(:)
 
 #PATMO_reverseRates
+    do i=1,cellsNumber
+      krate(i,473) = 1.57d13*(Tgas(i)/298)*exp(-4883/Tgas(i))
+    end do
 
   end subroutine computeReverseRates
 
