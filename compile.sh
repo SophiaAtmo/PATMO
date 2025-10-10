@@ -3,10 +3,9 @@ set -euo pipefail
 
 # ===============================
 # PATMO Excel → reaction_network.ntw
-# Ubuntu 22 兼容版本（内嵌 Python）
 # ===============================
 
-# 输入输出路径
+# input and output path
 INFILE="./tests/testfolder/Reaction_Network.xlsx"
 OUTFILE="./tests/testfolder/reaction_network.ntw"
 
