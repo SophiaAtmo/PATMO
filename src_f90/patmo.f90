@@ -115,17 +115,21 @@ contains
     n((positionTgas-1)*cellsNumber+1:(positionTgas*cellsNumber)) &
          = TgasAll(:)
 
+    !compute rates
+    if (mod(first,20) .eq. 0) then
+            call computeRates(TgasAll(:))
+            call computePhotoRates(tauAll(:,:))
+            call computeReverseRates(TgasAll(:))
+            print *, 'Current convergence:', convergence
+    endif
+    first = first+1
+
     ! compute convergence
     total_species = total_species + sum(nAll(cellsNumber,1:chemSpeciesNumber))
     convergence = (total_species - total_species_old)*100/total_species
     total_species_old = total_species
     if (abs(convergence) < 1e-10) print *, 'Convergence/steady state reached'
-
-    !compute rates
-    call computeRates(TgasAll(:))
-    call computePhotoRates(tauAll(:,:))
-    call computeReverseRates(TgasAll(:)) 
-    call computeHescape() 
+    
     !compute tot density
     !ntotAll(:) = sum(nall(:,1:chemSpeciesNumber),2)
     ntotAll(:) = 0.0d0
