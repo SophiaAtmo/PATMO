@@ -43,13 +43,11 @@ contains
     implicit none
     real*8,intent(in)::dt
     real*8,intent(out)::convergence
-    real*8 :: total_species, total_species_old
     real*8::atol(neqAll),rtol(neqAll)
     real*8::tstart,tend,n(neqAll)
     real*8::sumxn(photoBinsNumber),m(speciesNumber)
     !type(VODE_OPTS)::OPTIONS
     integer::istate,itask,i,j
-
     integer,parameter::meth=2
     integer,parameter::lwm=2*neqAll**2 + 2*neqAll &
          + (neqAll**2+10*neqAll)/2
@@ -123,12 +121,6 @@ contains
             print *, 'Current convergence:', convergence
     endif
     first = first+1
-
-    ! compute convergence
-    total_species = total_species + sum(nAll(cellsNumber,1:chemSpeciesNumber))
-    convergence = (total_species - total_species_old)*100/total_species
-    total_species_old = total_species
-    if (abs(convergence) < 1e-10) print *, 'Convergence/steady state reached'
     
     !compute tot density
     !ntotAll(:) = sum(nall(:,1:chemSpeciesNumber),2)
@@ -136,6 +128,10 @@ contains
     do j = 1, chemSpeciesNumber
       if (j /= patmo_idx_M) then
        ntotAll(:) = ntotAll(:) + nAll(:, j)
+       total_species = total_species + sum(nAll(cellsNumber,1:chemSpeciesNumber))
+       convergence = (total_species - total_species_old)*100/total_species
+       total_species_old = total_species
+       if (abs(convergence) < 1e-10) print *, 'Convergence/steady state reached'
       end if
     end do
 
