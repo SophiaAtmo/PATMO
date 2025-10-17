@@ -32,7 +32,7 @@ contains
 
   !**************
   !run model for a time-step
-  subroutine patmo_run(dt)
+  subroutine patmo_run(dt,convergence)
     !use dvode_f90_m
     use patmo_parameters
     use patmo_commons
@@ -45,18 +45,21 @@ contains
     use patmo_utils
     implicit none
     real*8,intent(in)::dt
+    real*8,intent(out)::convergence
     real*8::atol(neqAll),rtol(neqAll)
     real*8::tstart,tend,n(neqAll)
     real*8::sumxn(photoBinsNumber),m(speciesNumber)
     !type(VODE_OPTS)::OPTIONS
     integer::istate,itask,i,j
-
     integer,parameter::meth=2
     integer,parameter::lwm=2*neqAll**2 + 2*neqAll &
          + (neqAll**2+10*neqAll)/2
     integer::itol,iopt,mf,lrw,liw
     integer::iwork(20+9*neqAll+LWM),neq(1)
     real*8::rwork(20+neqAll*6+3*neqAll+lwm)
+    integer :: first = 1
+    real*8  :: total_species = 0.0
+    real*8  :: total_species_old = 0.0
 
     lrw = size(rwork)
     liw = size(iwork)
@@ -116,27 +119,37 @@ contains
          = TgasAll(:)
 
     !compute rates
-    call computeRates(TgasAll(:))
-    call computePhotoRates(tauAll(:,:))
-    call computeReverseRates(TgasAll(:))
-#IFPATMO_useHescape 
-    call computeHescape() 
-#ENDIFPATMO
+    if (mod(first,20) .eq. 0) then
+            call computeRates(TgasAll(:))
+            call computePhotoRates(tauAll(:,:))
+            call computeReverseRates(TgasAll(:))
+            #IFPATMO_useHescape 
+            call computeHescape() 
+            #ENDIFPATMO
+            print *, 'Current convergence:', convergence
+    endif
+    first = first+1
+    
+
     !compute tot density
-    !ntotAll(:) = sum(nall(:,1:chemSpeciesNumber),2) !Trieu commented
+    !ntotAll(:) = sum(nall(:,1:chemSpeciesNumber),2)
     ntotAll(:) = 0.0d0
     do j = 1, chemSpeciesNumber
       if (j /= patmo_idx_M) then
        ntotAll(:) = ntotAll(:) + nAll(:, j)
+       total_species = total_species + sum(nAll(cellsNumber,1:chemSpeciesNumber))
+       convergence = (total_species - total_species_old)*100/total_species
+       total_species_old = total_species
+       if (abs(convergence) < 1e-10) print *, 'Convergence/steady state reached'
       end if
-    end do                                           !Trieu commented
+    end do
 
     !compute mean molecular mass of the whole atmosphere
     ! (averaged between layers)
     m(:) = getSpeciesMass()
     meanMolecularMass = 0d0
     do i=1,cellsNumber
-    !   meanMolecularMass = meanMolecularMass &       !Trieu commented
+    !   meanMolecularMass = meanMolecularMass &
     !        + sum(m(1:chemSpeciesNumber) &
     !        * nAll(i,1:chemSpeciesNumber)) &
     !        / ntotAll(i) / cellsNumber
@@ -148,7 +161,7 @@ contains
     end do
 
     ! Average across all cells
-    meanMolecularMass = meanMolecularMass / cellsNumber  !Trieu commented
+    meanMolecularMass = meanMolecularMass / cellsNumber
     
     !call the solver (DVODE_f90)
     !CALL DVODE_F90(fex, &
