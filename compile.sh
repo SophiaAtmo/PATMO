@@ -71,11 +71,8 @@ from pathlib import Path
 import pandas as pd
 
 EXPECTED_HEADER_LEADING = "@format:idx"
-# internal column names (unique)
 INTERNAL_COLUMNS = ["IDX","R1","R2","R3","P1","P2","P3","RATE"]
-# exported header (duplicate names as required)
 EXPORT_HEADER = ["@format:idx","R","R","R","P","P","P","rate"]
-# Add a header
 HEADER_COMMENT = "#@var:T=Tgas"
 
 def find_columns(df):
@@ -83,23 +80,19 @@ def find_columns(df):
     if EXPECTED_HEADER_LEADING not in df.columns:
         raise ValueError(f"Required column '{EXPECTED_HEADER_LEADING}' not found.")
     idx_col = EXPECTED_HEADER_LEADING
-    # handle repeated names: R, R.1, R.2 etc.
     r_cols = [c for c in df.columns if isinstance(c,str) and (c=="R" or c.startswith("R."))]
     p_cols = [c for c in df.columns if isinstance(c,str) and (c=="P" or c.startswith("P."))]
-    # rate column
     if "k" in df.columns:
         rate_col = "k"
     elif "rate" in df.columns:
         rate_col = "rate"
     else:
         raise ValueError("Rate column 'k' or 'rate' not found.")
-    # pad to 3
     r_cols = (r_cols + [None, None, None])[:3]
     p_cols = (p_cols + [None, None, None])[:3]
     return idx_col, r_cols, p_cols, rate_col
 
 def s(series):
-    """convert to string and keep blanks"""
     series = series.astype("string").fillna("")
     return series.apply(lambda x: x.strip() if isinstance(x,str) else x)
 
@@ -122,30 +115,21 @@ def main():
     out_path = Path(sys.argv[2]).expanduser().resolve()
     if not in_path.exists():
         raise SystemExit(f"Input file not found: {in_path}")
-    
     df = pd.read_excel(in_path, dtype="string", engine="openpyxl")
     if df.empty:
         raise SystemExit("Excel file is empty.")
-    
     idx_col, r_cols, p_cols, rate_col = find_columns(df)
     out_df = build_output_df(df, idx_col, r_cols, p_cols, rate_col)
-    
     tmp_path = out_path.with_suffix(".tmp")
-
-    # write to temporary file first (without the header line)
     try:
         out_df.to_csv(tmp_path, index=False, header=EXPORT_HEADER, encoding="utf-8", line_terminator="\n")
     except TypeError:
         out_df.to_csv(tmp_path, index=False, header=EXPORT_HEADER, encoding="utf-8", lineterminator="\n")
-
-    # prepend the comment line
     with open(out_path, "w", encoding="utf-8") as f_out, open(tmp_path, "r", encoding="utf-8") as f_in:
         f_out.write(f"{HEADER_COMMENT}\n")
         f_out.writelines(f_in.readlines())
-
     tmp_path.unlink(missing_ok=True)
     print(f"File generated successfully: {out_path}")
-
 
 if __name__ == "__main__":
     main()
@@ -164,7 +148,6 @@ test.f90
 profile.dat
 solar_flux.txt
 EOF
-
 echo "copylist.pcp created at: $COPYLIST_FILE"
 
 # -------------------------------
@@ -173,10 +156,55 @@ echo "copylist.pcp created at: $COPYLIST_FILE"
 TEST_F90_FILE="${BASE_DIR}/test.f90"
 
 echo "[*] Creating test.f90 ..."
-cat > "$TEST_F90_FILE" <<EOF
-wait for seba to upload
-EOF
+cat > "$TEST_F90_FILE" <<'EOF'
+program test
+  use patmo
+  use patmo_commons
+  use patmo_constants
+  use patmo_parameters
+  implicit none
+  real*8::dt,x(speciesNumber),t,tend,imass,one_year
+  real*8::heff(chemSpeciesNumber)
+  real*8::dep(chemSpeciesNumber)
+  integer::icell,i,j
+  real*8::convergence = 100.0
+  character (len = *), parameter :: FILE_NAME = "budget.nc"
+  integer :: ncid
+  integer, parameter :: NDIMS = 2
+  integer :: bud_varid
+  integer :: alt_dimid, bud_dimid, spec_dimid
 
+  call patmo_init()
+  call patmo_loadInitialProfile("profile.dat",unitH="km",unitX="1/cm3")
+  call patmo_setFluxBB()
+  call patmo_setGravity(9.8d2)
+  wetdep(:,:) = 0d0 
+
+  imass = patmo_getTotalMass()
+  print*,"mass:",imass
+ 
+  dt = secondsPerDay 
+  tend = secondsPerDay*365*20d0 
+  one_year = secondsPerDay*365
+  t = 0d0
+
+  do
+     call patmo_run(dt,convergence)
+     t = t + dt        
+     if (t==tend .or. abs(convergence) < 1e-10) then
+        call patmo_run(dt,convergence)
+        call patmo_dumpDensityToFile(29,t,patmo_idx_O2)
+     endif  
+     print '(F11.2,a2)',t/tend*1d2," %"
+     if(t>=tend) exit
+  end do
+  
+  imass = patmo_getTotalMass()
+  print *,"mass:",imass
+  call patmo_dumpHydrostaticProfile("hydrostatEnd.out")
+  call patmo_dumpJValue("jvalue.dat")
+end program test
+EOF
 echo "test.f90 created at: $TEST_F90_FILE"
 
 # -------------------------------
@@ -186,7 +214,6 @@ SETTINGS_XLSX="${BASE_DIR}/settings.xlsx"
 OPTIONS_OPT="${BASE_DIR}/options.opt"
 
 echo "[*] Converting settings.xlsx to options.opt ..."
-
 python3 - "$SETTINGS_XLSX" "$OPTIONS_OPT" "$BASE_DIR" <<'PY'
 import sys
 from pathlib import Path
@@ -203,31 +230,20 @@ base_dir = Path(sys.argv[3]).expanduser().resolve()
 if not in_path.exists():
     raise SystemExit(f"settings.xlsx not found: {in_path}")
 
-# Read the Excel file
 df = pd.read_excel(in_path, dtype="string", engine="openpyxl")
-
-# Verify required columns
 expected = ["Parameter", "unit", "input"]
 if not all(col in df.columns for col in expected):
     raise SystemExit("settings.xlsx must have columns: Parameter, unit, input")
-
 df = df.fillna("")
-
-# Build a relative path for network line
-# Remove leading "./" if present, to ensure clean output
 relative_path = os.path.relpath(base_dir / "reaction_network.ntw", Path.cwd()).replace("./", "")
-
-# Write the options.opt file
 with open(out_path, "w", encoding="utf-8") as f:
     f.write(f"network = {relative_path}\n")
     for _, row in df.iterrows():
         param = str(row["Parameter"]).strip()
         value = str(row["input"]).strip() if isinstance(row["input"], str) else ""
         f.write(f"{param} = {value}\n")
-
 print(f"options.opt created at: {out_path}")
 PY
-
 echo "options.opt created successfully."
 
 # -------------------------------
@@ -237,7 +253,6 @@ PROFILE_XLSX="${BASE_DIR}/profile.xlsx"
 PROFILE_DAT="${BASE_DIR}/profile.dat"
 
 echo "[*] Converting profile.xlsx to profile.dat ..."
-
 python3 - "$PROFILE_XLSX" "$PROFILE_DAT" <<'PY'
 import sys
 from pathlib import Path
@@ -253,44 +268,31 @@ out_path = Path(sys.argv[2]).expanduser().resolve()
 if not in_path.exists():
     raise SystemExit(f"profile.xlsx not found: {in_path}")
 
-# Read Excel
 df = pd.read_excel(in_path, engine="openpyxl")
 df = df.where(pd.notnull(df), "")
 
-# Column indices (0-based)
-cols_keep = [0, 1]  # index, alt (keep as original)
-
-# Convert all other numeric columns to scientific notation (4 decimal places)
+cols_keep = [0, 1]
 for i, col in enumerate(df.columns):
     if i not in cols_keep:
-        df[col] = df[col].apply(
-            lambda x: f"{float(x):.4E}" if isinstance(x, (int, float, np.integer, np.floating)) else x
-        )
+        df[col] = df[col].apply(lambda x: f"{float(x):.4E}" if isinstance(x,(int,float,np.integer,np.floating)) else x)
 
-# Calculate numbers for first line
 total_columns = len(df.columns)
 env_params = 5
 species_count = total_columns - env_params
 
-# Write with first line "5  <species_count>"
 tmp_path = out_path.with_suffix(".tmp")
-
-# Save data body first
 try:
     df.to_csv(tmp_path, sep="\t", index=False, header=True, encoding="utf-8", line_terminator="\n")
 except TypeError:
     df.to_csv(tmp_path, sep="\t", index=False, header=True, encoding="utf-8", lineterminator="\n")
 
-# Insert the first line
 with open(out_path, "w", encoding="utf-8") as fout:
     fout.write(f"{env_params}\t{species_count}\n")
     with open(tmp_path, "r", encoding="utf-8") as fin:
         fout.writelines(fin.readlines())
-
 tmp_path.unlink(missing_ok=True)
 print(f"profile.dat created with header line: {env_params} {species_count}")
 PY
-
 echo "profile.dat created successfully."
 
 # -------------------------------
@@ -300,7 +302,7 @@ SOLAR_XLSX="${BASE_DIR}/solar_flux.xlsx"
 SOLAR_TXT="${BASE_DIR}/solar_flux.txt"
 OPTIONS_OPT="${BASE_DIR}/options.opt"
 
-echo "[*] Building solar_flux.txt by interpolating to energy grid ..."
+echo "[*] Building solar_flux.txt by interpolating to wavelength grid (nm) ..."
 
 python3 - "$SOLAR_XLSX" "$SOLAR_TXT" "$OPTIONS_OPT" <<'PY'
 import sys
@@ -320,67 +322,68 @@ if not in_xlsx.exists():
 if not opt_path.exists():
     raise SystemExit(f"options.opt not found: {opt_path}")
 
-# ---- read options.opt (key = value) ----
 params = {}
-with open(opt_path, "r", encoding="utf-8") as f:
+with open(opt_path,"r",encoding="utf-8") as f:
     for line in f:
         line=line.strip()
         if not line or line.startswith("#"):
             continue
         if "=" in line:
-            k, v = line.split("=", 1)
+            k,v=line.split("=",1)
             params[k.strip()] = v.strip()
 
-def get_num(key, cast=float):
-    if key not in params or params[key]=="":
-        raise SystemExit(f"Missing '{key}' in options.opt")
-    try:
-        return cast(params[key])
-    except Exception:
-        raise SystemExit(f"Invalid value for '{key}': {params[key]}")
+def get_num(key,alt_keys=(),cast=float,required_name=None):
+    keys_to_try = (key,)+tuple(alt_keys)
+    for kk in keys_to_try:
+        if kk in params and params[kk] != "":
+            try:
+                return cast(params[kk])
+            except Exception:
+                raise SystemExit(f"Invalid value for '{kk}': {params[kk]}")
+    readable = required_name or key
+    alts = ", ".join(alt_keys) if alt_keys else ""
+    hint = f" (or {alts})" if alts else ""
+    raise SystemExit(f"Missing '{readable}'{hint} in options.opt")
 
-E_min = get_num("energyMin", float)     # eV
-E_max = get_num("energyMax", float)     # eV
-NBIN  = get_num("photoBinsNumber", int)
+lam_min = get_num("wavelengMin",alt_keys=("wavelengMin",),cast=float,required_name="wavelengMin")
+lam_max = get_num("wavelengMax",cast=float,required_name="wavelengMax")
+NBIN = get_num("photoBinsNumber",cast=int)
 
 if NBIN <= 1:
     raise SystemExit("photoBinsNumber must be > 1")
+if lam_min > lam_max:
+    lam_min, lam_max = lam_max, lam_min
 
-# ---- read solar_flux.xlsx ----
-df = pd.read_excel(in_xlsx, engine="openpyxl")
-# be tolerant to slight header variations
-cols = {c.strip(): c for c in df.columns if isinstance(c, str)}
-wcol = next((cols[c] for c in cols if c.lower().startswith("wavelength")), None)
-icol = next((cols[c] for c in cols if c.lower().startswith("irradiance")), None)
+df = pd.read_excel(in_xlsx,engine="openpyxl")
+cols = {c.strip():c for c in df.columns if isinstance(c,str)}
+wcol = next((cols[c] for c in cols if c.lower().startswith("wavelength")),None)
+icol = next((cols[c] for c in cols if c.lower().startswith("irradiance")),None)
 if wcol is None or icol is None:
     raise SystemExit("Expected two columns: 'Wavelength (nm)' and 'Irradiance photon/(cm2 s nm)'")
 
-df = df[[wcol, icol]].rename(columns={wcol: "lambda_nm", icol: "Iph"})
-df = df.dropna(subset=["lambda_nm", "Iph"])
-# Ensure numeric
-df["lambda_nm"] = pd.to_numeric(df["lambda_nm"], errors="coerce")
-df["Iph"]       = pd.to_numeric(df["Iph"], errors="coerce")
-df = df.dropna(subset=["lambda_nm", "Iph"])
-
-# sort by wavelength ascending for interpolation
+df = df[[wcol,icol]].rename(columns={wcol:"lambda_nm",icol:"Iph"})
+df = df.dropna(subset=["lambda_nm","Iph"])
+df["lambda_nm"] = pd.to_numeric(df["lambda_nm"],errors="coerce")
+df["Iph"] = pd.to_numeric(df["Iph"],errors="coerce")
+df = df.dropna(subset=["lambda_nm","Iph"])
 df = df.sort_values("lambda_nm")
 
-# ---- target grid: equal spacing in energy (eV) ----
-# hc/e in eV*nm:
-HC_over_e = 1239.84197386209
-E_grid = np.linspace(E_min, E_max, NBIN)                 # eV (ascending)
-lambda_grid = HC_over_e / E_grid                         # nm (nonlinear in nm)
-
-# ---- interpolate I(lambda) to lambda_grid ----
-# outside the provided range -> 0.0
+lambda_grid = np.linspace(lam_min,lam_max,NBIN)
 lam_src = df["lambda_nm"].to_numpy()
-I_src   = df["Iph"].to_numpy()
-I_out = np.interp(lambda_grid, lam_src, I_src, left=0.0, right=0.0)
+I_src = df["Iph"].to_numpy()
+I_out = np.interp(lambda_grid,lam_src,I_src,left=0.0,right=0.0)
 
-# ---- write one value per line ----
-# scientific format for stability; change fmt if you want plain decimals
-np.savetxt(out_txt, I_out, fmt="%.8e")
+np.savetxt(out_txt,I_out,fmt="%.8e")
 print(f"solar_flux.txt created at: {out_txt}")
 PY
 
 echo "solar_flux.txt created successfully."
+
+# -------------------------------
+# Run PATMO test with user-defined folder, then cd ./build
+# -------------------------------
+echo "[*] Running PATMO test with: -test=\"${USER_SUBDIR}\" ..."
+python3 patmo -test="${USER_SUBDIR}"
+
+echo "[*] Entering ./build ..."
+cd ./build
