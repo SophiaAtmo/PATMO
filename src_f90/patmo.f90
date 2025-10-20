@@ -175,7 +175,7 @@ contains
     do
        CALL DLSODES(fex, NEQ(:), n(:), tstart, dt, ITOL, RTOL, ATOL,&
             ITASK, ISTATE, IOPT, RWORK, LRW, IWORK, LIW, JES, MF)
-       print *, istate
+       if (istate /= 2) print '(A,I0)', 'istate=', istate
        !recompute sparsity if required
        if(istate==-5.or.istate==-4) then
           istate = 3
