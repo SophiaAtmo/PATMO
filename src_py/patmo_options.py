@@ -6,6 +6,7 @@ class options:
 	def __init__(self,fname):
 		#option defaults
 		self.cellsNumber = 64
+		self.cellThickness = 10000
 		self.photoBinsNumber = 100
 		self.network = ""
 		self.energyMin = None
@@ -17,14 +18,17 @@ class options:
 		self.species = []
 		self.usePhotochemistry = True
 		self.useHescape = False
+		self.useWaterRemoval = False
+		self.useAerosolformation = False
+		self.useGravitySettling = False
 		self.constant_species = []
 		self.drydep_species = {} 
 		self.emission_species = {} 
 
 		#required casting for options
-		integerType = ["cellsNumber","photoBinsNumber"]
+		integerType = ["cellsNumber","cellThickness","photoBinsNumber"]
 		floatType = ["energyMin","energyMax","wavelengMin","wavelengMax"]
-		boolType = ["plotRates","useEntropyProduction","usePhotochemistry", "useHescape"]
+		boolType = ["plotRates","useEntropyProduction","usePhotochemistry","useHescape","useWaterRemoval","useAerosolformation","useGravitySettling"]
 		listType = ["species","constant_species"]
 		dictionaryType = ["emission_species","drydep_species"]
 

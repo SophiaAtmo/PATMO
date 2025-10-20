@@ -650,22 +650,21 @@ class network:
 		for species in options.constant_species:
 			const_spec +="dn(:,patmo_idx_"+species+") = 0d0"+"\n"
 
-		#if no species rise error
-		if(self.options.drydep_species=={} or self.options.emission_species=={}):
-				print ("ERROR: No dry deposition or emission data in option file")
-				sys.exit()
-		
+		#if no species 
+		if(self.options.constant_species=={} or self.options.drydep_species=={} or self.options.emission_species=={}):
+				print ("Warning: No constant_species or dry deposition or emission data in option file")
+				
 		
 		drydep = ""
 		for idx, val in options.drydep_species.items():
 			drydep += (
-				f"if (n(1,patmo_idx_{idx}) > {val}/1d5) then\n"
-				f"  dn(1,patmo_idx_{idx}) = dn(1,patmo_idx_{idx}) - ({val}/1d5) * n(1,patmo_idx_{idx})\n"
+				f"if (n(1,patmo_idx_{idx}) > {val}/{options.cellThickness}) then\n"
+				f"  dn(1,patmo_idx_{idx}) = dn(1,patmo_idx_{idx}) - ({val}/{options.cellThickness}) * n(1,patmo_idx_{idx})\n"
 				f"end if\n"
 			)
 			if idx in ["CH4", "O2"]:
 				drydep += (
-					f"{idx}Flux = -1d5 * dn(1, patmo_idx_{idx})\n"
+					f"{idx}Flux = -{options.cellThickness} * dn(1, patmo_idx_{idx})\n"
 					f"dn(1,patmo_idx_{idx}) = 0d0\n"
 				)
 			
@@ -679,8 +678,8 @@ class network:
 		replaceList = [fullODE,const_spec,drydep,emis_spec]
 
 		#condition pragmas
-		ifPragmas = ["#IFPATMO_useHescape"]
-		ifConditions = [options.useHescape]
+		ifPragmas = ["#IFPATMO_useHescape","#IFPATMO_useGravitySettling","#IFPATMO_useAerosolformation","#IFPATMO_useWaterRemoval"]
+		ifConditions = [options.useHescape,options.useGravitySettling,options.useAerosolformation,options.useWaterRemoval]
 		
 		patmo_string.fileReplaceBuild("src_f90/patmo_ode.f90", "build/patmo_ode.f90", \
 			pragmaList, replaceList, ifPragmas, ifConditions)
