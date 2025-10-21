@@ -20,7 +20,7 @@ contains
     implicit none
     integer,intent(in)::index
     real*8,intent(in)::tau(photoBinsNumber,cellsNumber)
-    real*8::integrateXsec(cellsNumber), dE, mu
+    real*8::integrateXsec(cellsNumber), dE, mu, coef
     integer::j
 
     ! !loop on cells (stride photobins)
@@ -33,10 +33,11 @@ contains
     #PATMO_resolution
     !mu =cosine(zenith_angle)
     #PATMO_zenith_angle 
-    
+    !Parameter of incident solar flux = coef (Cronin, 2014- DOI:10.1175/JAS-D-13-0392.1)
+    #PATMO_TOA_para
     !loop on cells (stride photobins)
     do j=1,cellsNumber
-          integrateXsec(j) = sum(xsecAll(:,index)*photoFlux(:)*exp(-tau(:,j)/mu)*dE)
+          integrateXsec(j) = sum(xsecAll(:,index)*coef*photoFlux(:)*exp(-tau(:,j)/mu)*dE)
     end do
 
 
