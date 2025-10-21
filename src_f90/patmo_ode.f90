@@ -137,11 +137,6 @@ contains
     ! Fix the mixing ratio of CH4 and O2 at the bottom layer as a constant (Claire et al., 2014; Zahnle et al., 2006)
 #PATMO_drydeppecies
 
-      
-     
-    !Volcanic emission
-    !The release of 1 Tmol/year from Claire et al., 2014, with an H2S:SO2 ratio of 1:10
-    !The release of molecular hydrogen 3 Tmol/year from Claire et al., 2014
 #PATMO_emissionspecies
 
 #IFPATMO_useWaterRemoval    
