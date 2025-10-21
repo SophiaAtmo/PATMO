@@ -651,20 +651,20 @@ class network:
 			const_spec +="dn(:,patmo_idx_"+species+") = 0d0"+"\n"
 
 		#if no species 
-		if(self.options.constant_species=={} or self.options.drydep_species=={} or self.options.emission_species=={}):
+		if(self.options.constant_species==[] or self.options.drydep_species=={} or self.options.emission_species=={}):
 				print ("Warning: No constant_species or dry deposition or emission data in option file")
 				
 		
 		drydep = ""
 		for idx, val in options.drydep_species.items():
 			drydep += (
-				f"if (n(1,patmo_idx_{idx}) > {val}/{options.cellThickness}) then\n"
-				f"  dn(1,patmo_idx_{idx}) = dn(1,patmo_idx_{idx}) - ({val}/{options.cellThickness}) * n(1,patmo_idx_{idx})\n"
+				f"if (n(1,patmo_idx_{idx}) > {val}/({options.cellThickness}*1d2)) then\n"
+				f"  dn(1,patmo_idx_{idx}) = dn(1,patmo_idx_{idx}) - ({val}/({options.cellThickness}*1d2)) * n(1,patmo_idx_{idx})\n"
 				f"end if\n"
 			)
 			if idx in ["CH4", "O2"]:
 				drydep += (
-					f"{idx}Flux = -{options.cellThickness} * dn(1, patmo_idx_{idx})\n"
+					f"{idx}Flux = -{options.cellThickness}*1d2 * dn(1, patmo_idx_{idx})\n"
 					f"dn(1,patmo_idx_{idx}) = 0d0\n"
 				)
 			
