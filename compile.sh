@@ -153,59 +153,54 @@ echo "copylist.pcp created at: $COPYLIST_FILE"
 # -------------------------------
 # Write test.f90 file
 # -------------------------------
-TEST_F90_FILE="${BASE_DIR}/test.f90"
-
-echo "[*] Creating test.f90 ..."
-cat > "$TEST_F90_FILE" <<'EOF'
-program test
-  use patmo
-  use patmo_commons
-  use patmo_constants
-  use patmo_parameters
-  implicit none
-  real*8::dt,x(speciesNumber),t,tend,imass,one_year
-  real*8::heff(chemSpeciesNumber)
-  real*8::dep(chemSpeciesNumber)
-  integer::icell,i,j
-  real*8::convergence = 100.0
-  character (len = *), parameter :: FILE_NAME = "budget.nc"
-  integer :: ncid
-  integer, parameter :: NDIMS = 2
-  integer :: bud_varid
-  integer :: alt_dimid, bud_dimid, spec_dimid
-
-  call patmo_init()
-  call patmo_loadInitialProfile("profile.dat",unitH="km",unitX="1/cm3")
-  call patmo_setFluxBB()
-  call patmo_setGravity(9.8d2)
-  wetdep(:,:) = 0d0 
-
-  imass = patmo_getTotalMass()
-  print*,"mass:",imass
- 
-  dt = secondsPerDay 
-  tend = secondsPerDay*365*20d0 
-  one_year = secondsPerDay*365
-  t = 0d0
-
-  do
-     call patmo_run(dt,convergence)
-     t = t + dt        
-     if (t==tend .or. abs(convergence) < 1e-10) then
-        call patmo_run(dt,convergence)
-        call patmo_dumpDensityToFile(29,t,patmo_idx_O2)
-     endif  
-     print '(F11.2,a2)',t/tend*1d2," %"
-     if(t>=tend) exit
-  end do
-  
-  imass = patmo_getTotalMass()
-  print *,"mass:",imass
-  call patmo_dumpHydrostaticProfile("hydrostatEnd.out")
-  call patmo_dumpJValue("jvalue.dat")
-end program test
-EOF
-echo "test.f90 created at: $TEST_F90_FILE"
+#TEST_F90_FILE="${BASE_DIR}/test.f90"
+#
+#echo "[*] Creating test.f90 ..."
+#cat > "$TEST_F90_FILE" <<'EOF'
+#program test
+#  use patmo
+#  use patmo_commons
+#  use patmo_constants
+#  use patmo_parameters
+#  implicit none
+#  real*8::dt,x(speciesNumber),t,tend,imass,one_year
+#  real*8::heff(chemSpeciesNumber)
+#  real*8::dep(chemSpeciesNumber)
+#  integer::icell,i,j
+#  real*8::convergence = 100.0
+#
+#  call patmo_init()
+#  call patmo_loadInitialProfile("profile.dat",unitH="km",unitX="1/cm3")
+#  call patmo_setFluxBB()
+#  call patmo_setGravity(9.8d2)
+#  wetdep(:,:) = 0d0 
+#
+#  imass = patmo_getTotalMass()
+#  print*,"mass:",imass
+# 
+#  dt = secondsPerDay 
+#  tend = secondsPerDay*365*20d0 
+#  one_year = secondsPerDay*365
+#  t = 0d0
+#
+#  do
+#     call patmo_run(dt,convergence)
+#     t = t + dt        
+#     if (t==tend .or. abs(convergence) < 1e-10) then
+#        call patmo_run(dt,convergence)
+#        call patmo_dumpDensityToFile(29,t,patmo_idx_O2)
+#     endif  
+#     print '(F11.2,a2)',t/tend*1d2," %"
+#     if(t>=tend) exit
+#  end do
+#  
+#  imass = patmo_getTotalMass()
+#  print *,"mass:",imass
+#  call patmo_dumpHydrostaticProfile("hydrostatEnd.out")
+#  call patmo_dumpJValue("jvalue.dat")
+#end program test
+#EOF
+#echo "test.f90 created at: $TEST_F90_FILE"
 
 # -------------------------------
 # Convert settings.xlsx → options.opt
