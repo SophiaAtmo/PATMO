@@ -1,4 +1,4 @@
-This folder is for preset: modern atmospheric sulfur cycle
+This folder is for preset: modern atmospheric sulfur cycle \\
 based on DOI:10.2343/geochemj.GJ24014
 
 move compile file to the main directory before use, following：
