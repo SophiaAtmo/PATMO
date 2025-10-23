@@ -13,3 +13,5 @@ S	16*mpne
 _1	0e0
 _3	0e0
 e	me
+# excited-state label (e.g., CS2E for photoexcited CS2)
+E   0e0 
