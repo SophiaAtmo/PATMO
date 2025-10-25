@@ -111,6 +111,6 @@ patmo_string.indentFileList(allFiles)
 #plot rates coefficient
 if(myOptions.plotRates):
 	print (">> build done, you can start to work there! <<")
-	myNetwork.makeHtmlDocs()
+#	myNetwork.makeHtmlDocs()
 
 print ("DONE, BYE!")
