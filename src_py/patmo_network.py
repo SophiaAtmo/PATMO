@@ -424,13 +424,13 @@ class network:
 
 	#*********************
 	#prepare html docs
-	def makeHtmlDocs(self):
-		shutil.copyfile("htmlDocs/index.src","htmlDocs/index.html")
-		self.makeHtmlSpeciesList()
-		self.makeHtmlReactionsList()
-		self.createTopology()
-		self.plotRates()
-		self.plotReverseRates()
+	#def makeHtmlDocs(self):
+	#	shutil.copyfile("htmlDocs/index.src","htmlDocs/index.html")
+	#	self.makeHtmlSpeciesList()
+	#	self.makeHtmlReactionsList()
+	#	self.createTopology()
+	#	self.plotRates()
+	#	self.plotReverseRates()
 
 	#*********************
 	#prepare html species list
@@ -653,7 +653,18 @@ class network:
 		#if no species 
 		if(self.options.constant_species==[] or self.options.drydep_species=={} or self.options.emission_species=={}):
 				print ("Warning: No constant_species or dry deposition or emission data in option file")
-				
+		
+		gravity_spec = ""
+		for idx, g_coef in options.gravity_species.items():
+			gravity_spec += (
+				f"do j = cellsNumber, 2, -1\n"
+				f"  dn(j    , patmo_idx_{idx}) = dn(j    , patmo_idx_{idx}) - {g_coef} * n(j, patmo_idx_{idx})\n"
+				f"  dn(j - 1, patmo_idx_{idx}) = dn(j - 1, patmo_idx_{idx}) + {g_coef} * n(j, patmo_idx_{idx})\n"
+				f"end do\n"
+				f"{idx}SurFall = {g_coef} * n(1, patmo_idx_{idx})\n"
+				f"dn(1, patmo_idx_{idx}) = dn(1, patmo_idx_{idx}) - {idx}SurFall\n\n"
+	        )
+		
 		
 		drydep = ""
 		for idx, val in options.drydep_species.items():
@@ -674,12 +685,12 @@ class network:
 			emis_spec +="dn(1,patmo_idx_"+idx+") = "+"dn(1,patmo_idx_"+idx+") + "+val+"\n"
 		
         #replace pragma
-		pragmaList = ["#PATMO_ODE","#PATMO_constantspecies","#PATMO_drydeppecies","#PATMO_emissionspecies"]
-		replaceList = [fullODE,const_spec,drydep,emis_spec]
+		pragmaList = ["#PATMO_ODE","#PATMO_constantspecies","#PATMO_gravitysettling","#PATMO_drydeppecies","#PATMO_emissionspecies"]
+		replaceList = [fullODE,const_spec,gravity_spec,drydep,emis_spec]
 
 		#condition pragmas
-		ifPragmas = ["#IFPATMO_useHescape","#IFPATMO_useGravitySettling","#IFPATMO_useAerosolformation","#IFPATMO_useWaterRemoval"]
-		ifConditions = [options.useHescape,options.useGravitySettling,options.useAerosolformation,options.useWaterRemoval]
+		ifPragmas = ["#IFPATMO_useHescape","#IFPATMO_useAerosolformation","#IFPATMO_useWaterRemoval"]
+		ifConditions = [options.useHescape,options.useAerosolformation,options.useWaterRemoval]
 		
 		patmo_string.fileReplaceBuild("src_f90/patmo_ode.f90", "build/patmo_ode.f90", \
 			pragmaList, replaceList, ifPragmas, ifConditions)

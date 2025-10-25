@@ -22,7 +22,7 @@ class options:
         self.useHescape = False
         self.useWaterRemoval = False
         self.useAerosolformation = False
-        self.useGravitySettling = False
+        self.gravity_species = {}
         self.constant_species = []
         self.drydep_species = {}
         self.emission_species = {}
@@ -37,10 +37,9 @@ class options:
             "useHescape",
             "useWaterRemoval",
             "useAerosolformation",
-            "useGravitySettling",
         ]
         listType = ["species", "constant_species"]
-        dictionaryType = ["emission_species", "drydep_species"]
+        dictionaryType = ["emission_species", "drydep_species","gravity_species"]
 
         # check if file exists
         if not os.path.isfile(fname):
