@@ -5,7 +5,6 @@ contains
     use patmo_constants
     use patmo_parameters
     use patmo_utils
-    use patmo_rates
     implicit none
     integer,intent(in)::neq
     real*8,intent(in)::tt,nin(neqAll)
@@ -46,8 +45,6 @@ contains
     do i=1,speciesNumber
        n(:,i) = nin((i-1)*cellsNumber+1:(i*cellsNumber))
     end do
-
-    call computeTotalDensityExcludingM(n)
 
     !local copy of Tgas
     Tgas(:) = nin((positionTgas-1)*cellsNumber+1:(positionTgas*cellsNumber))
@@ -128,15 +125,21 @@ contains
             + (k_hm(:)-d_hm(:,i)) * ngas_hmz(:)) * n(:,i) &
             + (k_hm(:)+d_hm(:,i)) * ngas_hmm(:) * n_m(:,i)
     end do
-
+    
     !Chemical Species with constant concentration
 #PATMO_constantspecies
-       
+    
+    ! Gravity Settling
+#PATMO_gravitysettling
+   
     ! Dry Deposition: assumed a deposition rate of 0.1 cm/s 
     !dn(1,patmo_idx_A)=dn(1,patmo_idx_A) - 0.1/(layer_thickness(in cm))*n(1,patmo_idx_A)
     ! Fix the mixing ratio of CH4 and O2 at the bottom layer as a constant (Claire et al., 2014; Zahnle et al., 2006)
 #PATMO_drydeppecies
-
+      
+    !Volcanic emission
+    !The release of 1 Tmol/year from Claire et al., 2014, with an H2S:SO2 ratio of 1:10
+    !The release of molecular hydrogen 3 Tmol/year from Claire et al., 2014
 #PATMO_emissionspecies
 
 #IFPATMO_useWaterRemoval    
@@ -163,21 +166,6 @@ contains
     end do	
 #ENDIFPATMO
 
-#IFPATMO_useGravitySettling   
-    ! Gravity Settling
-    do j = cellsNumber, 2, -1
-        dn(j    , patmo_idx_SO4) = dn(j    , patmo_idx_SO4) - gd(j) * n(j, patmo_idx_SO4)
-        dn(j - 1, patmo_idx_SO4) = dn(j - 1, patmo_idx_SO4) + gd(j) * n(j, patmo_idx_SO4)
-    end do
-    SO4SurFall = gd(1) * n(1, patmo_idx_SO4)
-    dn(1, patmo_idx_SO4) = dn(1, patmo_idx_SO4) - SO4SurFall
-    do j = cellsNumber, 2, -1
-        dn(j    , patmo_idx_S8) = dn(j    , patmo_idx_S8) - 2.62d-4 * n(j, patmo_idx_S8)
-        dn(j - 1, patmo_idx_S8) = dn(j - 1, patmo_idx_S8) + 2.62d-4 * n(j, patmo_idx_S8)
-    end do
-    S8SurFall = 2.62d-4 * n(1, patmo_idx_S8)
-    dn(1, patmo_idx_S8) = dn(1, patmo_idx_S8) - S8SurFall
-#ENDIFPATMO
     
 #IFPATMO_useHescape
     ! Hydrogen Escape

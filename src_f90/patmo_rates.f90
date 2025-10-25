@@ -17,10 +17,8 @@ contains
     real*8::y(cellsNumber),F(cellsNumber)
 #ENDIFPATMO
 
-    call computeTotalDensityExcludingM(n)
-    !total density per layer
-    M(:) = n(:, patmo_idx_M)
-
+ !total density per layer
+    M(:) = 0.5*sum(nAll(:,1:chemSpeciesNumber),2)
     !loop on cells
     do icell=1,cellsNumber
        Tgas = inTgas(icell)
@@ -31,20 +29,4 @@ contains
   
   end subroutine computeRates
    
-  subroutine computeTotalDensityExcludingM(n)
-    use patmo_commons
-    use patmo_parameters
-    implicit none
-
-    real*8, intent(inout) :: n(:,:)  ! n(cellsNumber, speciesNumber)
-    integer :: j
-
-    n(:, patmo_idx_M) = 0.0d0
-    do j = 1, chemSpeciesNumber
-      if (j /= patmo_idx_M) then
-        n(:, patmo_idx_M) = n(:, patmo_idx_M) + nAll(:, j)
-      end if
-    end do
-  end subroutine computeTotalDensityExcludingM
-
 end module patmo_rates
