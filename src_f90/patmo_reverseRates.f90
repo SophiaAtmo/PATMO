@@ -33,7 +33,7 @@ contains
 
 #PATMO_reverseRates
     do i=1,cellsNumber
-      krate(i,473) = 1.57d13*(Tgas(i)/298)*exp(-4883/Tgas(i))
+      krate(i,475) = 1.57d13*(Tgas(i)/298)*exp(-4883/Tgas(i))
     end do
 
   end subroutine computeReverseRates
