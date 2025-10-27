@@ -1,6 +1,5 @@
 test.f90
 profile.dat
-plot.gps
 run.csh
 solar_flux.txt
 partial_H2SO4.txt
