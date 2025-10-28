@@ -32,10 +32,7 @@ contains
     invTgas(:) = 1d0/Tgas(:)
 
 #PATMO_reverseRates
-    do i=1,cellsNumber
-      krate(i,475) = 1.57d13*(Tgas(i)/298)*exp(-4883/Tgas(i))
-    end do
-
+    
   end subroutine computeReverseRates
 
 end module patmo_reverseRates
