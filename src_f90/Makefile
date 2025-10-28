@@ -7,21 +7,17 @@ exec = test
 
 #flags
 switchOPT = -O3 -flto -funroll-loops
-#switchOPT = -O3 -ipo -ip -unroll
 switchDBG = -O0 -check all -warn all -fpe0 -u -traceback -warn nounused -g
 switchPRO = $(switchOPT) -pg -traceback -g
 switchOMP = $(switchOPT) -openmp
 
 switch = $(switchOPT)
 
-
 #objects that need fortran, mind the sequence
 gnu_objs = opkda1.o opkda2.o opkdmain.o patmo_commons.o patmo_constants.o \
-       patmo_parameters.o patmo_utils.o patmo_rates.o patmo_reverseRates.o \
-       patmo_photo.o patmo_photoRates.o patmo_sparsity.o patmo_jacobian.o \
+    	patmo_parameters.o patmo_utils.o patmo_rates.o patmo_reverseRates.o \
+    	patmo_photo.o patmo_photoRates.o patmo_sparsity.o patmo_jacobian.o \
     	patmo_ode.o patmo.o test.o\
-	   #patmo_write.o\
-	   
 
 # default target
 all: $(gnu_objs)
