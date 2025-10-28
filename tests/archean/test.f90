@@ -5,6 +5,7 @@ program test
   use patmo_parameters
   implicit none
   real*8::dt,x(speciesNumber),t,tend,imass
+  real*8::convergence = 100.0
   integer::icell
 
   !init photochemistry
