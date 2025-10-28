@@ -32,7 +32,7 @@ contains
 
   !**************
   !run model for a time-step
-  subroutine patmo_run(dt)
+  subroutine patmo_run(dt,convergence)
     !use dvode_f90_m
     use patmo_parameters
     use patmo_commons
@@ -45,12 +45,15 @@ contains
     use patmo_utils
     implicit none
     real*8,intent(in)::dt
+    real*8,intent(out)::convergence
     real*8::atol(neqAll),rtol(neqAll)
     real*8::tstart,tend,n(neqAll)
     real*8::sumxn(photoBinsNumber),m(speciesNumber)
     !type(VODE_OPTS)::OPTIONS
     integer::istate,itask,i,j
-
+    integer :: first = 1
+    real*8  :: total_species = 0.0
+    real*8  :: total_species_old = 0.0
     integer,parameter::meth=2
     integer,parameter::lwm=2*neqAll**2 + 2*neqAll &
          + (neqAll**2+10*neqAll)/2
@@ -115,15 +118,26 @@ contains
     n((positionTgas-1)*cellsNumber+1:(positionTgas*cellsNumber)) &
          = TgasAll(:)
 
-    !compute rates
-    call computeRates(TgasAll(:))
-    call computePhotoRates(tauAll(:,:))
-    call computeReverseRates(TgasAll(:))
-#IFPATMO_useHescape 
-    call computeHescape() 
-#ENDIFPATMO
+    !compute rates & print convergence every 20 steps
+    if (mod(first,20) .eq. 0) then
+      call computeRates(TgasAll(:))
+      call computePhotoRates(tauAll(:,:))
+      call computeReverseRates(TgasAll(:))
+   #IFPATMO_useHescape 
+      call computeHescape() 
+   #ENDIFPATMO
+      print *, 'Current convergence:', convergence
+    end if
+    first = first+1
+
     !compute tot density
-    ntotAll(:) = 0.5*sum(nall(:,1:chemSpeciesNumber),2) !Trieu fixed
+    ntotAll(:) = 0.5*sum(nall(:,1:chemSpeciesNumber),2) 
+
+    !convergence calculation
+    total_species = total_species + sum(nAll(cellsNumber,1:chemSpeciesNumber))
+    convergence = (total_species - total_species_old)*100/total_species
+    total_species_old = total_species
+    if (abs(convergence) < 1e-10) print *, 'Convergence/steady state reached'
     
     !compute mean molecular mass of the whole atmosphere
     ! (averaged between layers)
@@ -149,7 +163,7 @@ contains
     do
        CALL DLSODES(fex, NEQ(:), n(:), tstart, dt, ITOL, RTOL, ATOL,&
             ITASK, ISTATE, IOPT, RWORK, LRW, IWORK, LIW, JES, MF)
-       print *, istate
+       if (istate /= 2) print '(A,I0)', 'istate=', istate
        !recompute sparsity if required
        if(istate==-5.or.istate==-4) then
           istate = 3
