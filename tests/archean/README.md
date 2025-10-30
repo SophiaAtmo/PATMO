@@ -1,12 +1,7 @@
-archean input
-
-no need 
+Move the compile file to the main directory before use by running:
 
 ```bash
-compile.sh
-```
-
-direct use
-
-```bash
-patmo -test=archean
+mv ./compile_archean.sh ../../
+cd ../../
+chmod +x ./compile_archean.sh
+./compile_archean.sh
