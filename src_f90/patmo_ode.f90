@@ -145,6 +145,7 @@ contains
 #IFPATMO_useWaterRemoval    
     ! Water Removal
     dn(:,patmo_idx_H2O) = dn(:,patmo_idx_H2O) - n(:,patmo_idx_H2O) * condenseH2O(:)
+    dn(1,patmo_idx_H2O) = 0d0
 #ENDIFPATMO
     ! Wet Deposition
     do j=12, 2, -1
