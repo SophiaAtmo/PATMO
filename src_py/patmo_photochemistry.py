@@ -112,7 +112,7 @@ class photochemistry:
 						continue
 					if(not(readData)): continue
 					#read data
-					arow = [float(x) for x in srow.split(" ") if x!=""]
+					arow = [float(x) for x in srow.split()]
 					for ihead in range(len(header)):
 						head = header[ihead]
 						if(head in myReactions):
