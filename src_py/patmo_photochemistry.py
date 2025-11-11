@@ -7,7 +7,6 @@ from scipy.interpolate import interp1d
 
 class photochemistry:
 
-
 	#*************************
 	#constructor
 	def __init__(self,network,options):
@@ -97,7 +96,8 @@ class photochemistry:
 					if(isHeader):
 						readData = True
 						isHeader = False
-						header = [x.strip() for x in srow.split(" ") if x!=""]
+						#header = [x.strip() for x in srow.split(" ") if x!=""]
+						header = [x for x in srow.replace("\t", " ").split() if x]
 						myReactions = dict()
 						#loop on header columns to skip
 						for head in header:
@@ -132,117 +132,117 @@ class photochemistry:
 
 	#*****************
 	def createLogMetric(self):
-
-		#skip this if no photochemistry is required
-		if(not(self.options.usePhotochemistry)): return
-
-		energyMin = self.options.energyMin
-		energyMax = self.options.energyMax
+		# Skip if photochemistry is disabled
+		if not self.options.usePhotochemistry:
+			return
+    
+		# Physical constants (Planck constant, speed of light)
+		hplanck_eV = 4.135667662e-15   # eV*s
+		clight     = 2.99792458e10     # cm/s
+		nm_to_cm   = 1e-7              # nm → cm
+    
 		binsNumber = self.options.photoBinsNumber
-
-		#if optional argument missing find limits automatically
-		if(energyMin==None):
+    
+        # ===== Determine energy range from wavelength limits (nm) =====
+		wl_min_nm = self.options.wavelengMin
+		wl_max_nm = self.options.wavelengMax
+    
+		if (wl_min_nm is not None) and (wl_max_nm is not None):
+            # Ensure correct order
+			if wl_min_nm > wl_max_nm:
+				wl_min_nm, wl_max_nm = wl_max_nm, wl_min_nm
+    
+            # Convert wavelength to energy (E = h * c / λ)
+            # Note: shorter wavelength -> higher energy
+			emin = hplanck_eV * clight / (wl_max_nm * nm_to_cm)  # energy at λ_max
+			emax = hplanck_eV * clight / (wl_min_nm * nm_to_cm)  # energy at λ_min
+    
+			print("Using wavelength limits (nm): [{}, {}]".format(wl_min_nm, wl_max_nm))
+			print("Derived energy limits (eV)  :", emin, emax)
+		else:
+            # If wavelength range not provided, find limits automatically
 			emin = 9e99
-			#loop on rates to find limits (min/max)
+			emax = 0.0
 			for reaction in self.network.photoReactions:
-				emin = min(min(reaction.xsecEnergy),emin)
-		else:
-			emin = energyMin
-		#find max limit automatically if required
-		if(energyMax==None):
-			emax = 0e0
-			#loop on rates to find limits (min/max)
-			for reaction in self.network.photoReactions:
-				emax = max(max(reaction.xsecEnergy),emax)
-		else:
-			emax = energyMax
-
-		#print message if auto min/max
-		if(energyMin==None):
-			print ("Automatic min limit (eV):",emin)
-
-		if(energyMax==None):
-			print ("Automatic max limit (eV):",emax)
-
-
-		#log energy limits
+				if reaction.xsecEnergy:
+					emin = min(emin, min(reaction.xsecEnergy))
+					emax = max(emax, max(reaction.xsecEnergy))
+			if not (emin < emax):
+				raise RuntimeError("Cannot determine energy range: no photolysis xsecs loaded.")
+			print("Automatic energy limits (eV):", emin, emax)
+    
+        # ===== Create logarithmic bins in energy space =====
+		from math import log10
 		lemin = log10(emin)
 		lemax = log10(emax)
 
-		#init energy metric lists
-		self.energyMetric["left"] = []
-		self.energyMetric["right"] = []
-		self.energyMetric["mid"] = []
-		self.energyMetric["span"] = []
+		self.energyMetric = {"left": [], "right": [], "mid": [], "span": []}
 
-		reportFolder = "reports/xsecs/"
+		reportFolder    = "reports/xsecs/"
 		xsecBuildFolder = "build/xsecs/"
-
-		#create xsecs folder in build if not there
-		if(not(os.path.exists(xsecBuildFolder))):
+		import os
+		if not os.path.exists(xsecBuildFolder):
 			os.makedirs(xsecBuildFolder)
 
-		#loop on bins to create log metric
 		for i in range(binsNumber):
-			energyLeft = 1e1**(i*(lemax-lemin)/binsNumber+lemin)
-			energyRight = 1e1**((i+1)*(lemax-lemin)/binsNumber+lemin)
+			energyLeft  = 10.0 ** (i      * (lemax - lemin) / binsNumber + lemin)
+			energyRight = 10.0 ** ((i + 1) * (lemax - lemin) / binsNumber + lemin)
 			self.energyMetric["left"].append(energyLeft)
 			self.energyMetric["right"].append(energyRight)
-			self.energyMetric["mid"].append((energyLeft+energyRight)/2.)
-			self.energyMetric["span"].append(energyRight-energyLeft)
+			self.energyMetric["mid"].append((energyLeft + energyRight) / 2.0)
+			self.energyMetric["span"].append(energyRight - energyLeft)
 
-		#write metric to file as mid, span (loaded by f90)
-		fout = open(patmo_string.pathFormat(xsecBuildFolder)+"photoMetric.dat","w")
-		fout.write("#photochemistry metric, mid, span, left, right (in eV)\n")
+        # ===== Write metric file (in eV) for Fortran side =====
+		import patmo_string
+		fout = open(patmo_string.pathFormat(xsecBuildFolder) + "photoMetric.dat", "w")
+		fout.write("# Photochemistry metric: mid, span, left, right (in eV)\n")
 		for i in range(binsNumber):
-			edata = [self.energyMetric["mid"][i], self.energyMetric["span"][i], \
-				self.energyMetric["left"][i], self.energyMetric["right"][i]]
-			fout.write((" ".join([str(x) for x in edata]))+"\n")
+			edata = [
+                self.energyMetric["mid"][i],
+                self.energyMetric["span"][i],
+                self.energyMetric["left"][i],
+                self.energyMetric["right"][i],
+            ]
+			fout.write((" ".join([str(x) for x in edata])) + "\n")
 		fout.close()
-
-
-		#set the starting index for photo rates
+    
+        # ===== Interpolate all reactions on the new metric =====
 		indexBase = len(self.network.reactions)
 		index = 1
-		#interpolate rates on metric
+    
+		from scipy.interpolate import interp1d
 		for reaction in self.network.photoReactions:
-			#dump xsec loaded from file
-			reaction.dumpXsec(reportFolder,postpone="_org.dat")
-
-			#interpolate loaded reaction rate
-			finterp = interp1d(reaction.xsecEnergy,reaction.xsec)
+            # Save the original cross-section (as loaded from file)
+			reaction.dumpXsec(reportFolder, postpone="_org.dat")
+    
+            # Interpolator (allow extrapolation outside range -> 0)
+			finterp = interp1d(reaction.xsecEnergy, reaction.xsec,
+                               bounds_error=False, fill_value=0.0)
 			minEnergy = min(reaction.xsecEnergy)
 			maxEnergy = max(reaction.xsecEnergy)
-			#empty xsec, will be replaced with interpolated
+    
+            # Reset arrays before storing interpolated results
 			reaction.xsecEnergy = []
 			reaction.xsecEnergySpan = []
 			reaction.xsec = []
-			#interpolate xsecs on the current metric
+    
 			for ienergy in range(len(self.energyMetric["mid"])):
 				xL = self.energyMetric["left"][ienergy]
 				xR = self.energyMetric["right"][ienergy]
-				fR = fL = 0e0
-				if(xL>=minEnergy and xL<=maxEnergy):
-					fL = finterp(xL)
-				if(xR>=minEnergy and xR<=maxEnergy):
-					fR = finterp(xR)
-				#add energy from metric
+				fL = finterp(xL) if (minEnergy <= xL <= maxEnergy) else 0.0
+				fR = finterp(xR) if (minEnergy <= xR <= maxEnergy) else 0.0
+    
 				reaction.xsecEnergy.append(self.energyMetric["mid"][ienergy])
-				reaction.xsecEnergySpan.append(self.energyMetric["right"][ienergy] \
-					- self.energyMetric["left"][ienergy])
-				#add xsec from interpolation
-				reaction.xsec.append((fL+fR)/2.)
-
-			#define reaction index
+				reaction.xsecEnergySpan.append(self.energyMetric["right"][ienergy] - self.energyMetric["left"][ienergy])
+				reaction.xsec.append((fL + fR) / 2.0)
+    
+            # Assign indices and dump interpolated results
 			reaction.index = indexBase + index
 			reaction.photoIndex = index
-			#dump interpolated xsec to file
-			reaction.dumpXsec(reportFolder,postpone="_interp.dat")
-			reaction.dumpXsec(xsecBuildFolder,postpone=".dat")
-			reaction.rate = "integrateXsec("+str(index)+", tau(:,:))"
-			#increase counter reaction index
+			reaction.dumpXsec(reportFolder, postpone="_interp.dat")
+			reaction.dumpXsec(xsecBuildFolder, postpone=".dat")
+			reaction.rate = "integrateXsec(" + str(index) + ", tau(:,:))"
 			index += 1
-
 
 	#**********************
 	def buildLoadPhotoRates(self):
