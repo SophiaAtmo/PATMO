@@ -22,23 +22,34 @@ def buildCommons(network,options):
 		allCommons += "integer,parameter::"+variableName+" = "+str(value)+"\n"
 
 	#commons for species index
+	for species in network.getSpecies():
+		allCommons += "integer,parameter::"+species.label+" = "+str(species.index)+"\n"
+
 	photoPartners = []
 	for reaction in network.photoReactions:
 		photoPartners.append(reaction.reactants[0].label)
+
 	photochemPartners = ""
 	if len(photoPartners):
 
+        # Start line with first element immediately after "(/"
+		first = photoPartners[0]
 		photochemPartners = (
-            "integer,dimension(photoReactionsNumber)::photoPartnerIndex = (/\n"
-        )
-		for i, partner in enumerate(photoPartners):
-			if i < len(photoPartners) - 1:
-                # all except last → add ,&
-				photochemPartners += f"    {partner},&\n"
-			else:
-                # last → no comma, no &
-				photochemPartners += f"    {partner}\n"
-		photochemPartners += "/)\n"
+			f"integer,dimension(photoReactionsNumber)::photoPartnerIndex = (/{first},&\n"
+		)
+
+        # Middle elements
+		for p in photoPartners[1:-1]:
+			photochemPartners += f"{p},&\n"
+
+        # Last element (no ,&)
+		if len(photoPartners) > 1:
+			photochemPartners += f"{photoPartners[-1]}/)"
+		else:
+            # Only one element
+			photochemPartners = (
+				f"integer,dimension(photoReactionsNumber)::photoPartnerIndex = (/{first}/)"
+			)
 
 	indexArrays = ""
 	indexDict = dict()
