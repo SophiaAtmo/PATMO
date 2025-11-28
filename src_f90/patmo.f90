@@ -730,7 +730,7 @@ contains
     integer::i,j
 
     do i=1,cellsNumber
-       write(ifile,'(E17.8,I8,E17.8)') time, i, nall(i,idx) &
+       write(ifile,'(E17.8,I8,E17.8E3)') time, i, nall(i,idx) &
             / sum(nall(i,1:chemSpeciesNumber))
     end do
     write(ifile,*)
