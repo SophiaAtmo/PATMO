@@ -9,7 +9,9 @@ program test
   real*8::dt,x(speciesNumber),t,tend,imass,one_year
   real*8::heff(chemSpeciesNumber)
   real*8::dep(chemSpeciesNumber) !cm/s
+  real*8::total_elapsed_ms
   integer::icell,i,j
+  integer(kind=8)::clock_start,clock_finish,clock_rate
   real*8::convergence = 100.0
 
   !init photochemistry
@@ -81,6 +83,7 @@ program test
   tend = secondsPerDay*365*10d0 
   one_year = secondsPerDay*365
   t = 0d0
+  call system_clock(clock_start, clock_rate)
 
   !loop on time
   do
@@ -100,21 +103,26 @@ program test
     call patmo_dumpDensityToFile(43,t,patmo_idx_SO4)
 	call patmo_dumpDensityToFile(44,t,patmo_idx_S)
 	call patmo_dumpDensityToFile(45,t,patmo_idx_SO2)
-	call patmo_dumpDensityToFile(46,t,patmo_idx_SO4)
-	call patmo_dumpDensityToFile(47,t,patmo_idx_CS)
-	call patmo_dumpDensityToFile(48,t,patmo_idx_SCSOH)
-	call patmo_dumpDensityToFile(49,t,patmo_idx_H2SO4)
-	call patmo_dumpDensityToFile(50,t,patmo_idx_SO3)
-	call patmo_dumpDensityToFile(51,t,patmo_idx_H2S)
-	call patmo_dumpDensityToFile(52,t,patmo_idx_SH)
-	call patmo_dumpDensityToFile(53,t,patmo_idx_SO)
-	call patmo_dumpDensityToFile(55,t,patmo_idx_CH3SCH3)
+	call patmo_dumpDensityToFile(46,t,patmo_idx_CS)
+	call patmo_dumpDensityToFile(47,t,patmo_idx_SCSOH)
+	call patmo_dumpDensityToFile(48,t,patmo_idx_H2SO4)
+	call patmo_dumpDensityToFile(49,t,patmo_idx_H2S)
+	call patmo_dumpDensityToFile(50,t,patmo_idx_SH)
+	call patmo_dumpDensityToFile(51,t,patmo_idx_SO)
+	call patmo_dumpDensityToFile(52,t,patmo_idx_CH3SCH3)
     
     endif
  
   print '(F11.2,a2)',t/tend*1d2," %"
     if(t>=tend) exit
   end do
+
+  total_elapsed_ms = 0d0
+  call system_clock(clock_finish)
+  if(clock_rate>0) then
+    total_elapsed_ms = 1d3 * dble(clock_finish-clock_start) / dble(clock_rate)
+  end if
+  call patmo_printElapsedTime("Total model elapsed: ", total_elapsed_ms)
   
  !get mass, g/cm3
   imass = patmo_getTotalMass()
@@ -238,5 +246,3 @@ subroutine computewetdep(i,heff)
 
    end subroutine computewetdep
 	!**************
-
-

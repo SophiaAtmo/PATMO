@@ -158,10 +158,70 @@ Rainout-SO4.txt
 SO4_deposition_rate.txt
 vapor_H2SO4.txt
 EOF
+if [[ -f "${BASE_DIR}/volcano_events.dat" ]]; then
+  echo "volcano_events.dat" >> "$COPYLIST_FILE"
+fi
 echo "copylist.pcp created at: $COPYLIST_FILE"
 
 # -------------------------------
-# Write test.f90 file
+# Validate test.f90 dump configuration
+# -------------------------------
+TEST_F90_FILE="${BASE_DIR}/test.f90"
+
+echo "[*] Checking patmo_dumpDensityToFile entries in test.f90 ..."
+python3 - "$TEST_F90_FILE" <<'PY'
+import re
+import sys
+from pathlib import Path
+
+path = Path(sys.argv[1]).expanduser().resolve()
+if not path.exists():
+    raise SystemExit(f"test.f90 not found: {path}")
+
+pattern = re.compile(
+    r"patmo_dumpDensityToFile\(\s*(\d+)\s*,\s*[^,]+\s*,\s*patmo_idx_([A-Za-z0-9_]+)\s*\)"
+)
+seen_units = {}
+seen_species = {}
+duplicate_units = []
+duplicate_species = []
+
+for lineno, line in enumerate(path.read_text(encoding="utf-8").splitlines(), start=1):
+    match = pattern.search(line)
+    if match is None:
+        continue
+    unit = int(match.group(1))
+    species = match.group(2)
+    if unit in seen_units:
+        duplicate_units.append((unit, seen_units[unit], lineno))
+    else:
+        seen_units[unit] = lineno
+    if species in seen_species:
+        duplicate_species.append((species, seen_species[species], lineno))
+    else:
+        seen_species[species] = lineno
+
+if duplicate_units or duplicate_species:
+    if duplicate_units:
+        print("Duplicate patmo_dumpDensityToFile unit numbers found:", file=sys.stderr)
+        for unit, first_line, second_line in duplicate_units:
+            print(f"  unit {unit}: lines {first_line} and {second_line}", file=sys.stderr)
+    if duplicate_species:
+        print("Duplicate patmo_dumpDensityToFile species found:", file=sys.stderr)
+        for species, first_line, second_line in duplicate_species:
+            print(f"  {species}: lines {first_line} and {second_line}", file=sys.stderr)
+    raise SystemExit(1)
+
+print(
+    f"test.f90 dump configuration looks consistent: "
+    f"{len(seen_species)} unique species, {len(seen_units)} unique unit numbers."
+)
+PY
+
+echo "test.f90 dump configuration validated successfully."
+
+# -------------------------------
+# Legacy example for generating test.f90
 # -------------------------------
 #TEST_F90_FILE="${BASE_DIR}/test.f90"
 #
@@ -255,6 +315,21 @@ with open(out_path, "w", encoding="utf-8") as f:
 print(f"options.opt created at: {out_path}")
 PY
 echo "options.opt created successfully."
+if [[ -f "${BASE_DIR}/volcano_events.dat" ]]; then
+  echo "[*] Appending default volcano options ..."
+  if ! grep -Eq '^[[:space:]]*useVolcano[[:space:]]*=' "$OPTIONS_OPT"; then
+    echo "useVolcano = T" >> "$OPTIONS_OPT"
+  fi
+  if ! grep -Eq '^[[:space:]]*volcanoFile[[:space:]]*=' "$OPTIONS_OPT"; then
+    echo "volcanoFile = volcano_events.dat" >> "$OPTIONS_OPT"
+  fi
+  if ! grep -Eq '^[[:space:]]*volcanoAshSettling[[:space:]]*=' "$OPTIONS_OPT"; then
+    echo "volcanoAshSettling = 1.0e-6" >> "$OPTIONS_OPT"
+  fi
+  if ! grep -Eq '^[[:space:]]*volcanoAshDecay[[:space:]]*=' "$OPTIONS_OPT"; then
+    echo "volcanoAshDecay = 2.0e-7" >> "$OPTIONS_OPT"
+  fi
+fi
 
 # -------------------------------
 # Convert profile.xlsx → profile.dat
