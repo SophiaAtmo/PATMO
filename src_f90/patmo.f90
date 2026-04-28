@@ -429,7 +429,7 @@ contains
     write(22,*) "#alt/km p/mbar Tgas/K"
     !loop on cells
     do i=1,cellsNumber
-       ntot = sum(nall(i,1:chemSpeciesNumber))
+       ntot = 0.5*sum(nall(i,1:chemSpeciesNumber))
        write(22,*) height(i)/1d5,ntot*kboltzmann*TgasAll(i)/1d3,TgasAll(i)
     end do
     close(33)
