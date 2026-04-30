@@ -405,7 +405,7 @@ contains
        !resacale abundances depending on total pressure
        nall(i,1:chemSpeciesNumber) = &
             n(1:chemSpeciesNumber) &
-            / 0.5*sum(n(1:chemSpeciesNumber))*ntot
+            / (0.5*sum(n(1:chemSpeciesNumber)))*ntot
        !store old height
        zold = height(i)
     end do
@@ -531,7 +531,7 @@ contains
 
        !convert units if necessary
        if(trim(unitsX)=="ppbv") then
-          nall(j,:) = nall(j,:)/0.5*sum(nall(j,1:chemSpeciesNumber))
+          nall(j,:) = nall(j,:)/(0.5*sum(nall(j,1:chemSpeciesNumber)))
        elseif(trim(unitsX)=="1/cm3") then
           continue
        else
@@ -731,7 +731,7 @@ contains
 
     do i=1,cellsNumber
        write(ifile,'(E17.8,I8,E17.8E3)') time, i, nall(i,idx) &
-            / 0.5*sum(nall(i,1:chemSpeciesNumber))
+            / (0.5*sum(nall(i,1:chemSpeciesNumber)))
     end do
     write(ifile,*)
 
@@ -907,12 +907,12 @@ contains
             + 2d0 * nAll(cellsNumber, patmo_idx_H2) &
             + 2d0 * nAll(cellsNumber, patmo_idx_H2O) &
             + 4d0 * nAll(cellsNumber, patmo_idx_CH4)) &
-            / 0.5*sum(nAll(cellsNumber,1:chemSpeciesNumber))
+            / (0.5*sum(nAll(cellsNumber,1:chemSpeciesNumber)))
    H2esc = 2.5d8 * &
             (nAll(cellsNumber, patmo_idx_H2) &
             + nAll(cellsNumber, patmo_idx_H2O)&
             + 2d0 * nAll(cellsNumber, patmo_idx_CH4))&
-            / 0.5*sum(nAll(cellsNumber,1:chemSpeciesNumber))
+            / (0.5*sum(nAll(cellsNumber,1:chemSpeciesNumber)))
  end subroutine computeHescape
 
  subroutine patmo_dumpHescape(ifile, time)
