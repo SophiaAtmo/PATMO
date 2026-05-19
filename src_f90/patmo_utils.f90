@@ -24,6 +24,28 @@ contains
 
   end subroutine computeEntropyProductionFlux
 
+  subroutine patmo_printElapsedTime(label,elapsed_ms)
+    implicit none
+    character(len=*),intent(in)::label
+    real*8,intent(in)::elapsed_ms
+    integer(kind=8)::total_ms,remaining_ms
+    integer(kind=8)::hours,minutes,seconds,milliseconds
+
+    total_ms = int(elapsed_ms + 0.5d0, kind=8)
+    if(total_ms<0_8) total_ms = 0_8
+
+    hours = total_ms / 3600000_8
+    remaining_ms = mod(total_ms, 3600000_8)
+    minutes = remaining_ms / 60000_8
+    remaining_ms = mod(remaining_ms, 60000_8)
+    seconds = remaining_ms / 1000_8
+    milliseconds = mod(remaining_ms, 1000_8)
+
+    write(*,'(A,1X,I0,":",I2.2,":",I2.2,":",I3.3)') &
+         trim(label), hours, minutes, seconds, milliseconds
+
+  end subroutine patmo_printElapsedTime
+
   !*************
   function getEntropyProduction(timeInterval)
     use patmo_commons
