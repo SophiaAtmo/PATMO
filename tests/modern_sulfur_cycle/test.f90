@@ -91,25 +91,8 @@ program test
     call patmo_run(dt,convergence)
     t = t + dt
     if (t==tend .or. abs(convergence) < 1e-10) then
-        
-    call patmo_dumpDensityToFile(35,t,patmo_idx_COS)
- 	call patmo_dumpDensityToFile(36,t,patmo_idx_S2)
-	call patmo_dumpDensityToFile(37,t,patmo_idx_HSO)
-	call patmo_dumpDensityToFile(38,t,patmo_idx_HSO2)
- 	call patmo_dumpDensityToFile(39,t,patmo_idx_HSO3)
-  	call patmo_dumpDensityToFile(40,t,patmo_idx_CS2)
-    call patmo_dumpDensityToFile(41,t,patmo_idx_SO3)
-    call patmo_dumpDensityToFile(42,t,patmo_idx_CH4O3S)
-    call patmo_dumpDensityToFile(43,t,patmo_idx_SO4)
-	call patmo_dumpDensityToFile(44,t,patmo_idx_S)
-	call patmo_dumpDensityToFile(45,t,patmo_idx_SO2)
-	call patmo_dumpDensityToFile(46,t,patmo_idx_CS)
-	call patmo_dumpDensityToFile(47,t,patmo_idx_SCSOH)
-	call patmo_dumpDensityToFile(48,t,patmo_idx_H2SO4)
-	call patmo_dumpDensityToFile(49,t,patmo_idx_H2S)
-	call patmo_dumpDensityToFile(50,t,patmo_idx_SH)
-	call patmo_dumpDensityToFile(51,t,patmo_idx_SO)
-	call patmo_dumpDensityToFile(52,t,patmo_idx_CH3SCH3)
+
+		call patmo_dumpFinalSpeciesDensityCsv("final_species_number_density.csv")    
     
     endif
  
@@ -246,3 +229,42 @@ subroutine computewetdep(i,heff)
 
    end subroutine computewetdep
 	!**************
+
+  !***************
+  !dump final number densities to CSV in the requested species order.
+ subroutine patmo_dumpFinalSpeciesDensityCsv(fname)
+    use patmo_commons
+    use patmo_parameters
+    implicit none
+    character(len=*),intent(in)::fname
+    integer,parameter::dumpSpeciesNumber = 18
+    integer,dimension(dumpSpeciesNumber),parameter::speciesIdx = (/ &
+         patmo_idx_COS, patmo_idx_SH, patmo_idx_SO,patmo_idx_CS2, &
+         patmo_idx_CS, patmo_idx_S, patmo_idx_S2, patmo_idx_SCSOH, &
+         patmo_idx_HSO2, patmo_idx_H2S, patmo_idx_SO2, patmo_idx_SO3, &
+         patmo_idx_HSO3, patmo_idx_H2SO4, patmo_idx_SO4, patmo_idx_CH3SCH3, &
+         patmo_idx_CH4O3S, patmo_idx_CS2E /)
+    character(len=32)::value
+    integer::i,j
+
+    open(67,file=trim(fname),status="replace")
+    write(67,'(A)') "COS,SH,SO,CS2," // &
+         "CS,S,S2,SCSOH," // &
+         "HSO2,H2S,SO2,SO3," // &
+         "HSO3,H2SO4,SO4,CH3SCH3," // &
+         "CH4O3S,CS2E"
+
+    do i=1,cellsNumber
+       do j=1,dumpSpeciesNumber
+          if(j>1) write(67,'(A)',advance='no') ","
+          write(value,'(E17.8E3)') nall(i,speciesIdx(j))
+          write(67,'(A)',advance='no') trim(adjustl(value))
+       end do
+       write(67,*)
+    end do
+    close(67)
+
+    print *, "Final species number densities dumped in ", trim(fname)
+
+ end subroutine patmo_dumpFinalSpeciesDensityCsv
+
