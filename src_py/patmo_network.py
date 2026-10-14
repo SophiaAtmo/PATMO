@@ -673,11 +673,11 @@ class network:
 				f"  dn(1,patmo_idx_{idx}) = dn(1,patmo_idx_{idx}) - ({val}/({options.cellThickness}*1d2)) * n(1,patmo_idx_{idx})\n"
 				f"end if\n"
 			)
-			if idx in ["CH4", "O2"]:
-				drydep += (
-					f"{idx}Flux = -{options.cellThickness}*1d2 * dn(1, patmo_idx_{idx})\n"
-					f"dn(1,patmo_idx_{idx}) = 0d0\n"
-				)
+			#if idx in ["CH4", "O2"]:
+			#	drydep += (
+			#		f"{idx}Flux = -{options.cellThickness}*1d2 * dn(1, patmo_idx_{idx})\n"
+			#		f"dn(1,patmo_idx_{idx}) = 0d0\n"
+			#	)
 			
 				
 		emis_spec = ""		
