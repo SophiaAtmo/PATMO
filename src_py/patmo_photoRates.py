@@ -13,15 +13,15 @@ def buildPhotoRates(network,options):
 	dE = 0.0
 	dE += (options.wavelengMax-options.wavelengMin)/options.photoBinsNumber
 	res =""
-	res += "dE = " +str(dE) 
+	res += "dE = " +str(dE) + "d0"
 	
 	zenith = 0.0
 	zenith += math.cos(math.radians(float(options.zenith_angle)))
-	mu = f"mu = {zenith:.6f}"
+	mu = f"mu = {zenith:.6f}"+ "d0"
 	
 	coef = 0.0
 	coef += (float(options.TOA_para))
-	coef =f"coef = {coef:.6f}"
+	coef =f"coef = {coef:.6f}"+ "d0"
 	#replace commons pragma
 	pragmaList = ["#PATMO_photoRates","#PATMO_resolution", "#PATMO_zenith_angle","#PATMO_TOA_para"]
 	replaceList = [allRates,res,mu,coef]
